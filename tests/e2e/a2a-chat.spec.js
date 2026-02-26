@@ -1,0 +1,145 @@
+/**
+ * Playwright E2E 测试：Claude 和 Codex 互相艾特并正确回复
+ *
+ * 运行方式：
+ *   npx playwright test tests/e2e/a2a-chat.spec.js
+ *
+ * 前提条件：
+ *   - 服务器已启动：node server/index.js
+ *   - 端口 3200 可访问
+ */
+
+const { test, expect } = require('@playwright/test');
+
+const BASE_URL = process.env.CAT_CAFE_URL || 'http://localhost:3200';
+const TEST_TIMEOUT = 120000; // 2 分钟
+
+test.describe('A2A 聊天测试', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(BASE_URL);
+    // 等待页面加载完成
+    await expect(page.locator('h1')).toContainText('Cat Cafe Chat');
+  });
+
+  test('页面应该正确加载', async ({ page }) => {
+    // 检查标题
+    await expect(page.locator('h1')).toHaveText('Cat Cafe Chat');
+
+    // 检查连接状态
+    const statusText = page.locator('#statusText');
+    await expect(statusText).toContainText(/连接|在线/i, { timeout: 5000 });
+  });
+
+  test('应该显示三只猫猫', async ({ page }) => {
+    // 等待猫猫列表加载
+    const catsContainer = page.locator('#cats');
+    await expect(catsContainer).toBeVisible({ timeout: 5000 });
+
+    // 检查三只猫的按钮
+    const catButtons = catsContainer.locator('button');
+    await expect(catButtons).toHaveCount(3, { timeout: 5000 });
+  });
+
+  test('应该能选择猫猫', async ({ page }) => {
+    const catsContainer = page.locator('#cats');
+    const catButtons = catsContainer.locator('button');
+
+    // 点击第一只猫
+    await catButtons.first().click();
+
+    // 应该有选中状态
+    await expect(catButtons.first()).toHaveClass(/selected|active/i);
+  });
+
+  test('应该能发送消息给 Claude', async ({ page }) => {
+    // 选择 opus（第一只猫）
+    const catsContainer = page.locator('#cats');
+    const catButtons = catsContainer.locator('button');
+    await catButtons.first().click();
+
+    // 输入消息
+    const promptInput = page.locator('#prompt');
+    await promptInput.fill('请回复"测试成功"');
+
+    // 点击发送
+    const runButton = page.locator('#runBtn');
+    await runButton.click();
+
+    // 等待回复
+    const logContainer = page.locator('#log');
+    await expect(logContainer).toContainText('测试成功', { timeout: 60000 });
+  });
+
+  test('Claude 被 @ Codex 后，Codex 应该回复', async ({ page }) => {
+    // 选择 opus
+    const catsContainer = page.locator('#cats');
+    const catButtons = catsContainer.locator('button');
+    await catButtons.first().click(); // opus
+
+    // 输入包含 @codex 的消息
+    const promptInput = page.locator('#prompt');
+    await promptInput.fill('@opus 请介绍一下你自己，然后 @codex 让它也介绍');
+
+    // 点击发送
+    const runButton = page.locator('#runBtn');
+    await runButton.click();
+
+    // 等待 opus 回复
+    const logContainer = page.locator('#log');
+
+    // opus 应该回复
+    await expect(logContainer).toContainText(/opus|布偶猫|宪宪/i, { timeout: 60000 });
+
+    // 等待 codex 回复（A2A 触发）
+    await expect(logContainer).toContainText(/codex|缅因猫|砚砚/i, { timeout: 120000 });
+  });
+
+  test('Codex 被 @ 后应该使用正确格式回复', async ({ page }) => {
+    // 选择 codex（第二只猫）
+    const catsContainer = page.locator('#cats');
+    const catButtons = catsContainer.locator('button');
+
+    // 第二只猫应该是 codex
+    if (await catButtons.count() >= 2) {
+      await catButtons.nth(1).click();
+    }
+
+    // 输入消息
+    const promptInput = page.locator('#prompt');
+    await promptInput.fill('请简单回复"收到"');
+
+    // 点击发送
+    const runButton = page.locator('#runBtn');
+    await runButton.click();
+
+    // 等待回复
+    const logContainer = page.locator('#log');
+    await expect(logContainer).toContainText('收到', { timeout: 60000 });
+  });
+});
+
+test.describe('A2A 链式调用测试', () => {
+  test('应该支持 A @ B @ C 链式调用', async ({ page }) => {
+    await page.goto(BASE_URL);
+
+    // 选择 opus
+    const catsContainer = page.locator('#cats');
+    const catButtons = catsContainer.locator('button');
+    await catButtons.first().click();
+
+    // 输入链式调用消息
+    const promptInput = page.locator('#prompt');
+    await promptInput.fill('@opus 你好，请 @codex 帮忙验证');
+
+    const runButton = page.locator('#runBtn');
+    await runButton.click();
+
+    const logContainer = page.locator('#log');
+
+    // 等待 opus 回复
+    await expect(logContainer).toContainText(/opus|布偶猫/i, { timeout: 60000 });
+
+    // 等待 codex 回复
+    await expect(logContainer).toContainText(/codex|缅因猫/i, { timeout: 120000 });
+  });
+});
