@@ -1,0 +1,91 @@
+# Cat Café 项目进度
+
+> 最后更新：2026-02-26
+
+---
+
+## 最近活动
+
+### 2026-02-26
+- **TDD 开发 M1 & M2 功能**（86 个测试，82 通过）
+  - M1.1 召唤猫猫：支持别名（@宪宪/@砚砚）、多猫并行、角色定义（18 测试）
+  - M1.2 猫猫状态栏：状态管理（idle/thinking/tool_call/replying）、Token 消耗追踪（8 测试）
+  - M1.3 猫猫配置：模型选择、上下文预算、人格设定、工具权限（11 测试）
+  - M2.1 A2A 调用：工作队列、链式调用深度限制、回调消息（7 测试）
+  - M2.2 A2A 输出隔离：私有/公开通道分离、callback marker 过滤（8 测试）
+  - M2.3 Session Chain：session 管理、handoff、预算管理（10 测试）
+  - **联合集成测试**（16 测试）：M1+M2 完整流程、边界条件、性能测试
+  - **真实 CLI 集成测试**（4 通过 / 2 跳过）：
+    - ✅ Claude 基本调用（34秒）
+    - ✅ Claude resume 对话（68秒，成功记住数字 42）
+    - ✅ A2A 路由联动
+    - ✅ 状态管理联动（38秒）
+    - ⚠️ Codex 超时（网络问题）
+    - ⚠️ Gemini 认证问题
+- **代码目录重构**：将根目录下的 11 个 JS 文件整理到 `server/` 目录
+  - `server/index.js` - 主入口
+  - `server/servers/` - HTTP/WebSocket 服务器
+  - `server/a2a/` - Agent-to-Agent 路由
+  - `server/cli/` - AI CLI 封装
+  - `server/mcp/` - MCP 服务
+  - `server/config/` - 配置文件
+  - `server/utils/` - 工具函数
+  - `server/scripts/` - 命令行脚本
+- M0.1 进度记录文件 ✅ 已完成
+- docs 目录清理完成（删除 OpenClaw 特定内容，保留通用流程）
+- CLAUDE.md 适配 Cat Café 项目
+- CODE_MAP.md、api-contract.md 更新为当前项目结构
+
+---
+
+## 里程碑总览
+
+| 里程碑 | 名称 | 状态 | 测试数 |
+|--------|------|------|--------|
+| M0 | 项目基础设施 | ✅ 已完成 | - |
+| M1 | 基础交互 | ✅ 已完成 | 37 |
+| M2 | 多猫协作 | ✅ 已完成 | 25 |
+| **集成测试** | M1+M2 联合 | ✅ 已完成 | 16 |
+| M3 | 富媒体交互 | 🔲 未开始 | - |
+| M4 | 对话管理 | 🔲 未开始 | - |
+| M5 | 进阶功能 | 🔲 未开始 | - |
+| M6 | 研发工作流 | 🔲 未开始 | - |
+
+---
+
+## 新增/修改的文件
+
+### 测试文件
+| 文件 | 说明 |
+|------|------|
+| `tests/m1.1-summon-cats.test.js` | M1.1 召唤猫猫测试 |
+| `tests/m1.2-cat-status.test.js` | M1.2 猫猫状态栏测试 |
+| `tests/m1.3-cat-config.test.js` | M1.3 猫猫配置测试 |
+| `tests/m2.1-a2a-routing.test.js` | M2.1 A2A 调用测试 |
+| `tests/m2.2-output-isolation.test.js` | M2.2 输出隔离测试 |
+| `tests/m2.3-session-chain.test.js` | M2.3 Session Chain 测试 |
+| `tests/integration-m1-m2.test.js` | M1+M2 联合集成测试 |
+
+### 源代码文件
+| 文件 | 说明 |
+|------|------|
+| `server/config/cats.js` | 扩展猫猫配置，添加别名和人格 |
+| `server/config/cat-config.js` | 新建配置管理器 |
+| `server/utils/cat-status.js` | 新建状态管理器 |
+| `server/utils/output-channel.js` | 新建输出通道管理器 |
+| `server/utils/session-chain.js` | 新建 Session Chain 管理器 |
+| `server/a2a/mentions.js` | 优化 @提及解析 |
+| `server/a2a/registry.js` | 修复语法错误 |
+| `server/a2a/router.js` | 导出更多函数 |
+
+---
+
+## 历史记录
+
+| 日期 | 变更 |
+|------|------|
+| 2026-02-26 | M2 完成：A2A 调用、输出隔离、Session Chain（25 测试通过） |
+| 2026-02-26 | M1 完成：召唤猫猫、状态栏、配置（37 测试通过） |
+| 2026-02-26 | 代码目录重构：根目录 JS 文件整理到 server/ 目录结构 |
+| 2026-02-26 | M0 基础设施建设完成：docs 目录清理、CLAUDE.md 适配、CODE_MAP/api-contract 更新 |
+| 2026-02-26 | 创建 claude-progress.txt，启动 M0 基础设施建设 |
