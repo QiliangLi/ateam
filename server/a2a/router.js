@@ -265,6 +265,12 @@ async function routeSerial(worklist, options) {
       markExecuted(options.threadId, catId);
       const { cleanText, messages } = extractCallbackMessages(responseText);
 
+      // 存储 agent 的主要回复到 threadMessages（让后续 agent 能看到）
+      if (cleanText && cleanText.trim()) {
+        await postCallbackMessage(options, catId, cleanText.trim(), options.threadId);
+      }
+
+      // 存储显式的 callback messages
       for (const message of messages) {
         await postCallbackMessage(options, catId, message.content, message.threadId);
       }
