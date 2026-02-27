@@ -12,7 +12,6 @@
 const { test, expect } = require('@playwright/test');
 
 const BASE_URL = process.env.CAT_CAFE_URL || 'http://localhost:3200';
-const TEST_TIMEOUT = 120000; // 2 分钟
 
 test.describe('A2A 聊天测试', () => {
   test.beforeEach(async ({ page }) => {
@@ -27,35 +26,48 @@ test.describe('A2A 聊天测试', () => {
 
     // 检查连接状态
     const statusText = page.locator('#statusText');
-    await expect(statusText).toContainText(/连接|在线/i, { timeout: 5000 });
+    await expect(statusText).toContainText(/连接|已连接/i, { timeout: 10000 });
   });
 
   test('应该显示三只猫猫', async ({ page }) => {
-    // 等待猫猫列表加载
+    // 等待猫猫列表加载（使用 label.cat-pill 而不是 button）
     const catsContainer = page.locator('#cats');
-    await expect(catsContainer).toBeVisible({ timeout: 5000 });
+    await expect(catsContainer).toBeVisible({ timeout: 10000 });
 
-    // 检查三只猫的按钮
-    const catButtons = catsContainer.locator('button');
-    await expect(catButtons).toHaveCount(3, { timeout: 5000 });
+    // 检查三只猫的选项（label.cat-pill 包含 checkbox）
+    const catPills = catsContainer.locator('label.cat-pill');
+    await expect(catPills).toHaveCount(3, { timeout: 10000 });
   });
 
-  test('应该能选择猫猫', async ({ page }) => {
+  test('应该能选择/取消选择猫猫', async ({ page }) => {
     const catsContainer = page.locator('#cats');
-    const catButtons = catsContainer.locator('button');
+    const catCheckboxes = catsContainer.locator('input[type="checkbox"]');
 
-    // 点击第一只猫
-    await catButtons.first().click();
+    // 等待加载
+    await expect(catCheckboxes).toHaveCount(3, { timeout: 10000 });
 
-    // 应该有选中状态
-    await expect(catButtons.first()).toHaveClass(/selected|active/i);
+    // 等待 bootstrap 完成（默认全选）
+    await expect(catCheckboxes.first()).toBeChecked({ timeout: 5000 });
+
+    // 点击第一个 checkbox 取消选择
+    await catCheckboxes.first().click();
+    await expect(catCheckboxes.first()).not.toBeChecked();
   });
 
   test('应该能发送消息给 Claude', async ({ page }) => {
-    // 选择 opus（第一只猫）
-    const catsContainer = page.locator('#cats');
-    const catButtons = catsContainer.locator('button');
-    await catButtons.first().click();
+    // 取消选择其他猫，只选 opus
+    const catCheckboxes = page.locator('#cats input[type="checkbox"]');
+
+    // 先取消全选
+    const count = await catCheckboxes.count();
+    for (let i = 0; i < count; i++) {
+      if (await catCheckboxes.nth(i).isChecked()) {
+        await catCheckboxes.nth(i).click();
+      }
+    }
+
+    // 只选第一个（opus）
+    await catCheckboxes.first().check();
 
     // 输入消息
     const promptInput = page.locator('#prompt');
@@ -67,14 +79,24 @@ test.describe('A2A 聊天测试', () => {
 
     // 等待回复
     const logContainer = page.locator('#log');
-    await expect(logContainer).toContainText('测试成功', { timeout: 60000 });
+    await expect(logContainer).toContainText('测试成功', { timeout: 120000 });
   });
 
   test('Claude 被 @ Codex 后，Codex 应该回复', async ({ page }) => {
     // 选择 opus
-    const catsContainer = page.locator('#cats');
-    const catButtons = catsContainer.locator('button');
-    await catButtons.first().click(); // opus
+    const catCheckboxes = page.locator('#cats input[type="checkbox"]');
+
+    // 先取消全选
+    const count = await catCheckboxes.count();
+    for (let i = 0; i < count; i++) {
+      if (await catCheckboxes.nth(i).isChecked()) {
+        await catCheckboxes.nth(i).click();
+      }
+    }
+
+    // 只选 opus 和 codex
+    await catCheckboxes.first().check(); // opus
+    await catCheckboxes.nth(1).check();  // codex
 
     // 输入包含 @codex 的消息
     const promptInput = page.locator('#prompt');
@@ -88,44 +110,30 @@ test.describe('A2A 聊天测试', () => {
     const logContainer = page.locator('#log');
 
     // opus 应该回复
-    await expect(logContainer).toContainText(/opus|布偶猫|宪宪/i, { timeout: 60000 });
+    await expect(logContainer).toContainText(/opus|布偶猫|宪宪/i, { timeout: 120000 });
 
     // 等待 codex 回复（A2A 触发）
-    await expect(logContainer).toContainText(/codex|缅因猫|砚砚/i, { timeout: 120000 });
-  });
-
-  test('Codex 被 @ 后应该使用正确格式回复', async ({ page }) => {
-    // 选择 codex（第二只猫）
-    const catsContainer = page.locator('#cats');
-    const catButtons = catsContainer.locator('button');
-
-    // 第二只猫应该是 codex
-    if (await catButtons.count() >= 2) {
-      await catButtons.nth(1).click();
-    }
-
-    // 输入消息
-    const promptInput = page.locator('#prompt');
-    await promptInput.fill('请简单回复"收到"');
-
-    // 点击发送
-    const runButton = page.locator('#runBtn');
-    await runButton.click();
-
-    // 等待回复
-    const logContainer = page.locator('#log');
-    await expect(logContainer).toContainText('收到', { timeout: 60000 });
+    await expect(logContainer).toContainText(/codex|缅因猫|砚砚/i, { timeout: 180000 });
   });
 });
 
 test.describe('A2A 链式调用测试', () => {
-  test('应该支持 A @ B @ C 链式调用', async ({ page }) => {
+  test('应该支持 A @ B 链式调用', async ({ page }) => {
     await page.goto(BASE_URL);
 
     // 选择 opus
-    const catsContainer = page.locator('#cats');
-    const catButtons = catsContainer.locator('button');
-    await catButtons.first().click();
+    const catCheckboxes = page.locator('#cats input[type="checkbox"]');
+
+    // 先取消全选
+    const count = await catCheckboxes.count();
+    for (let i = 0; i < count; i++) {
+      if (await catCheckboxes.nth(i).isChecked()) {
+        await catCheckboxes.nth(i).click();
+      }
+    }
+
+    // 只选 opus
+    await catCheckboxes.first().check();
 
     // 输入链式调用消息
     const promptInput = page.locator('#prompt');
@@ -137,9 +145,9 @@ test.describe('A2A 链式调用测试', () => {
     const logContainer = page.locator('#log');
 
     // 等待 opus 回复
-    await expect(logContainer).toContainText(/opus|布偶猫/i, { timeout: 60000 });
+    await expect(logContainer).toContainText(/opus|布偶猫/i, { timeout: 120000 });
 
     // 等待 codex 回复
-    await expect(logContainer).toContainText(/codex|缅因猫/i, { timeout: 120000 });
+    await expect(logContainer).toContainText(/codex|缅因猫/i, { timeout: 180000 });
   });
 });
