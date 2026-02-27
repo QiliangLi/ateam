@@ -229,12 +229,22 @@ async function fetchThreadContext(options) {
 
 function formatThreadContext(messages, currentCatId) {
   if (!messages || messages.length === 0) return '';
-  const lines = ['## 对话历史'];
+  const lines = ['## 对话历史（其他 agent 之前发送的消息）'];
   for (const msg of messages) {
-    const role = msg.role === currentCatId ? '你' : msg.role;
-    lines.push(`**${role}**: ${msg.content}`);
+    lines.push(`**${msg.role}**: ${msg.content}`);
   }
+  lines.push('');
+  lines.push('注意：以上是其他 agent 发送的消息，请根据内容回复。保持你自己的身份，不要混淆。');
   return lines.join('\n');
+}
+
+function buildIdentityBlock(config) {
+  if (!config) return '';
+  const parts = [`你的身份：${config.name}（${config.alias}），ID: ${config.persona ? config.name : config.cli}`];
+  if (config.persona) {
+    parts.push(config.persona);
+  }
+  return parts.join('\n');
 }
 
 async function routeSerial(worklist, options) {
@@ -259,8 +269,11 @@ async function routeSerial(worklist, options) {
       const contextMessages = await fetchThreadContext(options);
       const contextBlock = formatThreadContext(contextMessages, catId);
 
+      // 构建身份信息
+      const identityBlock = buildIdentityBlock(config);
+
       const mentionGuide = buildA2AMentionInstructions();
-      const fullPrompt = [mentionGuide, contextBlock, injected, options.prompt].filter(Boolean).join('\n\n');
+      const fullPrompt = [identityBlock, mentionGuide, contextBlock, injected, options.prompt].filter(Boolean).join('\n\n');
       const responseText = await invokeCat(catId, fullPrompt, options);
       markExecuted(options.threadId, catId);
       const { cleanText, messages } = extractCallbackMessages(responseText);
