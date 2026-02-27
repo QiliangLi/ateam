@@ -212,6 +212,31 @@ function invokeCat(catId, prompt, options) {
   });
 }
 
+async function fetchThreadContext(options) {
+  if (!options.apiUrl || !options.invocationId || !options.callbackToken) {
+    return [];
+  }
+  try {
+    const url = `${options.apiUrl}/api/callbacks/thread-context?threadId=${encodeURIComponent(options.threadId)}&invocationId=${encodeURIComponent(options.invocationId)}&callbackToken=${encodeURIComponent(options.callbackToken)}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.messages || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function formatThreadContext(messages, currentCatId) {
+  if (!messages || messages.length === 0) return '';
+  const lines = ['## 对话历史'];
+  for (const msg of messages) {
+    const role = msg.role === currentCatId ? '你' : msg.role;
+    lines.push(`**${role}**: ${msg.content}`);
+  }
+  return lines.join('\n');
+}
+
 async function routeSerial(worklist, options) {
   registerWorklist(options.threadId, worklist);
 
@@ -230,8 +255,12 @@ async function routeSerial(worklist, options) {
           })
         : '';
 
+      // 获取对话历史并格式化
+      const contextMessages = await fetchThreadContext(options);
+      const contextBlock = formatThreadContext(contextMessages, catId);
+
       const mentionGuide = buildA2AMentionInstructions();
-      const fullPrompt = [mentionGuide, injected, options.prompt].filter(Boolean).join('\n\n');
+      const fullPrompt = [mentionGuide, contextBlock, injected, options.prompt].filter(Boolean).join('\n\n');
       const responseText = await invokeCat(catId, fullPrompt, options);
       markExecuted(options.threadId, catId);
       const { cleanText, messages } = extractCallbackMessages(responseText);

@@ -108,6 +108,56 @@ ST 状态：[未开始/已通过]
 - **网络代理**（硬规则）：所有外网请求默认走 `http://127.0.0.1:7890`（curl 加 `--proxy`，Playwright 在启动时配置）。直连失败不重试，直接报错
 - **图片文件统一存放**（硬规则）：所有截图/图片文件统一存 `docs/images/`，禁止丢根目录。Playwright 截图必须指定 `filename` 参数且带 `docs/images/` 前缀（如 `docs/images/xxx.png`）
 
+## 开发测试规范
+
+### 服务启动流程
+
+```bash
+# 1. 启动后端服务（提供 HTTP + WebSocket + API）
+node server/index.js
+
+# 2. 访问前端页面
+# 浏览器打开 http://localhost:3200
+# 服务同时提供静态文件和 API，无需单独启动前端服务
+```
+
+**端口说明**：
+- `3200`：聊天服务器（HTTP + SSE），同时提供前端静态文件
+- `3201`：回调服务器（可选，`--callback` 模式）
+
+**环境变量**：
+- `CAT_CAFE_PORT`：聊天服务器端口（默认 3200）
+- `CAT_CAFE_CALLBACK_PORT`：回调服务器端口（默认 3201）
+
+### E2E 测试要求（硬规则）
+
+**每开发完一个特性，必须运行 Playwright E2E 测试确认 agent 之间通信正常后才能提交。**
+
+```bash
+# 1. 先启动服务
+node server/index.js &
+
+# 2. 运行 E2E 测试
+npx playwright test tests/e2e/a2a-chat.spec.js
+
+# 3. 确认全部通过后再提交
+```
+
+**测试覆盖范围**：
+- 页面正确加载（标题、连接状态）
+- 猫猫成员列表显示
+- 选择/取消选择猫猫
+- 发送消息给单个 agent
+- **A2A 调用**：agent @ 其他 agent 后，被 @ 的 agent 能正确收到上下文并回复
+- **链式调用**：A @ B 后 B 能看到 A 的回复内容
+
+**提交前检查清单**：
+1. [ ] 服务能正常启动
+2. [ ] `npx playwright test tests/e2e/a2a-chat.spec.js` 全绿
+3. [ ] 手动测试 A2A 通信正常（可选但推荐）
+4. [ ] 代码 Review 通过
+5. [ ] 提交到 GitHub
+
 ## SR 写作规范
 
 - **SR 内容**：保留功能目标、接口契约（函数签名）、数据模型变更、关键约束、安全规则、配置项、测试用例列表、不改动文件表、参考文件表。禁止完整函数体（>10行）/具体 SQL/完整组件代码
