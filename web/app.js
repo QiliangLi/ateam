@@ -10,6 +10,9 @@ let availableCats = [];
 let selectedCats = new Set();
 let eventSource = null;
 
+// 流式输出：跟踪每个 agent 当前活动的消息
+const activeMessages = new Map(); // catId -> { element, contentEl, isThinking }
+
 function formatTime(ts = Date.now()) {
   return new Date(ts).toLocaleTimeString('zh-CN', {
     hour: '2-digit',
@@ -46,6 +49,51 @@ function appendMessage({ text, label, direction = 'left', kind = 'agent' }) {
 
   logEl.appendChild(row);
   logEl.scrollTop = logEl.scrollHeight;
+
+  return { row, content };
+}
+
+// 确保 agent 有消息元素，没有则创建"正在思考..."占位符
+function ensureMessage(catId) {
+  if (!activeMessages.has(catId)) {
+    const label = catId;
+    const { row, content } = appendMessage({
+      text: `${catId} 正在思考...`,
+      label,
+      direction: 'left',
+      kind: 'agent'
+    });
+    activeMessages.set(catId, { row, content, isThinking: true, fullText: '' });
+  }
+  return activeMessages.get(catId);
+}
+
+// 追加 chunk 到 agent 的消息中
+function appendChunk(catId, text) {
+  const entry = ensureMessage(catId);
+  entry.fullText += text;
+
+  if (entry.isThinking) {
+    // 移除占位符，显示实际内容
+    entry.content.textContent = text;
+    entry.isThinking = false;
+  } else {
+    // 追加到已有内容
+    entry.content.textContent = entry.fullText;
+  }
+
+  // 滚动到底部
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// agent 完成后重置，下次输出创建新消息
+function resetMessage(catId) {
+  activeMessages.delete(catId);
+}
+
+// 清空所有活动消息（用于新一轮对话）
+function clearActiveMessages() {
+  activeMessages.clear();
 }
 
 function renderCats() {
@@ -90,26 +138,24 @@ function connectStream(threadId) {
   eventSource.onmessage = (event) => {
     const payload = JSON.parse(event.data);
     if (payload.type === 'cli') {
-      appendMessage({
-        text: payload.text,
-        label: `${payload.catId} · CLI`,
-        direction: 'left',
-        kind: 'agent'
-      });
+      // 流式输出：追加到 agent 的消息中
+      appendChunk(payload.catId, payload.text);
       return;
     }
 
     if (payload.type === 'message') {
-      appendMessage({
-        text: payload.content,
-        label: payload.catId,
-        direction: 'left',
-        kind: 'agent'
-      });
+      // 显式消息：追加内容，然后重置
+      appendChunk(payload.catId, payload.content);
+      resetMessage(payload.catId);
       return;
     }
 
     if (payload.type === 'system') {
+      // 系统消息：检查是否执行完成
+      if (payload.message && payload.message.includes('执行完成')) {
+        // 执行完成，重置所有活动消息
+        clearActiveMessages();
+      }
       appendMessage({
         text: payload.message,
         label: 'System',
@@ -131,6 +177,10 @@ async function bootstrap() {
 
 runBtn.addEventListener('click', async () => {
   const threadId = threadInput.value.trim() || 'default';
+
+  // 清空上一轮的活动消息
+  clearActiveMessages();
+
   connectStream(threadId);
 
   const cats = Array.from(selectedCats);
@@ -154,6 +204,9 @@ runBtn.addEventListener('click', async () => {
 
   promptInput.value = '';
 
+  // 立即为选中的 agent 创建 "正在思考..." 占位符
+  cats.forEach(catId => ensureMessage(catId));
+
   await fetch('/api/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -163,6 +216,7 @@ runBtn.addEventListener('click', async () => {
 
 clearBtn.addEventListener('click', () => {
   logEl.innerHTML = '';
+  clearActiveMessages();
 });
 
 threadInput.addEventListener('change', () => {
