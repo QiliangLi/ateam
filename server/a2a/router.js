@@ -8,8 +8,14 @@ const DEFAULT_MAX_DEPTH = Number(process.env.MAX_A2A_DEPTH) || 15;
 const CALLBACK_MARKER = 'CAT_CAFE_POST_MESSAGE';
 const CALLBACK_SPLIT_REGEX = /CAT\s*\n\s*_CAFE_POST_MESSAGE/g;
 
-function buildA2AMentionInstructions() {
-  return '可用艾特：@opus，@codex，@gemini。仅在需要对方回复时才使用 @，并且把 @ 放在新的一行行首。请只使用这些可识别的 @ 名称。';
+function buildA2AMentionInstructions(currentCatId) {
+  const allCats = ['opus', 'codex', 'gemini'];
+  const otherCats = allCats.filter(id => id !== currentCatId);
+  return `可用艾特：${otherCats.map(id => '@' + id).join('，')}。
+重要规则：
+- 禁止 @ 自己（你现在是 ${currentCatId}）
+- 仅在需要对方回复时才使用 @，把 @ 放在新的一行行首
+- 不要输出 "CAT_CAFE_POST_MESSAGE"、"_MESSAGE"、"CAT_CAFE_POST" 等技术关键词`;
 }
 
 function extractCallbackMessages(text) {
@@ -43,11 +49,40 @@ function extractCallbackMessages(text) {
   return { cleanText: kept.join('\n'), messages };
 }
 
+// 需要从输出中过滤的关键词
+const FILTER_PATTERNS = [
+  /任务入口门禁/g,
+  /门禁结论/g,
+  /任务描述/g,
+  /任务类型/g,
+  /判断依据/g,
+  /对应流程/g,
+  /错题本已读/g,
+  /工作环境/g,
+  /前置检查/g,
+  /---/g,
+  /CAT_CAFE_POST_MESSAGE/g,
+  /_MESSAGE/g,
+  /CAT_CAFE_POST/g,
+  /\\"threadId\\"/g,
+  /\\"content\\"/g,
+];
+
 function filterCallbackOutput(chunk) {
   if (!chunk) return chunk;
+
+  // 先处理原有的 CALLBACK_MARKER 逻辑
   if (!chunk.includes(CALLBACK_MARKER) && !chunk.includes('_CAFE_POST_MESSAGE') && chunk.trim() !== 'CAT') {
-    return chunk;
+    // 应用额外的过滤模式
+    let filtered = chunk;
+    for (const pattern of FILTER_PATTERNS) {
+      filtered = filtered.replace(pattern, '');
+    }
+    // 清理多余的空行
+    filtered = filtered.replace(/\n{3,}/g, '\n\n').trim();
+    return filtered;
   }
+
   const normalized = chunk.replace(CALLBACK_SPLIT_REGEX, CALLBACK_MARKER);
   const lines = normalized.split('\n');
   const remove = new Set();
@@ -64,8 +99,16 @@ function filterCallbackOutput(chunk) {
     if (i + 1 < lines.length && lines[i + 1].trim() === '```') remove.add(i + 1);
   }
 
-  const kept = lines.filter((_, index) => !remove.has(index));
-  return kept.join('\n');
+  let kept = lines.filter((_, index) => !remove.has(index)).join('\n');
+
+  // 应用额外的过滤模式
+  for (const pattern of FILTER_PATTERNS) {
+    kept = kept.replace(pattern, '');
+  }
+  // 清理多余的空行
+  kept = kept.replace(/\n{3,}/g, '\n\n').trim();
+
+  return kept;
 }
 
 async function postCallbackMessage(options, catId, content, threadId) {
@@ -272,7 +315,7 @@ async function routeSerial(worklist, options) {
       // 构建身份信息
       const identityBlock = buildIdentityBlock(config);
 
-      const mentionGuide = buildA2AMentionInstructions();
+      const mentionGuide = buildA2AMentionInstructions(catId);
       const fullPrompt = [identityBlock, mentionGuide, contextBlock, injected, options.prompt].filter(Boolean).join('\n\n');
       const responseText = await invokeCat(catId, fullPrompt, options);
       markExecuted(options.threadId, catId);
