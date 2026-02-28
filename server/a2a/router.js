@@ -297,12 +297,19 @@ function formatThreadContext(messages, currentCatId) {
   return lines.join('\n');
 }
 
-function buildIdentityBlock(config) {
+function buildIdentityBlock(config, catId) {
   if (!config) return '';
-  const parts = [`你的身份：${config.name}（${config.alias}），ID: ${config.persona ? config.name : config.cli}`];
+  const parts = [
+    `## 你的身份`,
+    `名称：${config.name}（${config.alias}）`,
+    `ID：${catId}`,
+    `CLI：${config.cli}`
+  ];
   if (config.persona) {
-    parts.push(config.persona);
+    parts.push(`性格：${config.persona}`);
   }
+  parts.push('');
+  parts.push(`重要：你是 ${catId}，不是其他 agent。如果有人 @${catId}，那是在叫你。如果有人 @ 其他 agent（如 @opus、@codex、@gemini），那是在叫别人。`);
   return parts.join('\n');
 }
 
@@ -329,7 +336,7 @@ async function routeSerial(worklist, options) {
       const contextBlock = formatThreadContext(contextMessages, catId);
 
       // 构建身份信息
-      const identityBlock = buildIdentityBlock(config);
+      const identityBlock = buildIdentityBlock(config, catId);
 
       const mentionGuide = buildA2AMentionInstructions(catId);
       const fullPrompt = [identityBlock, mentionGuide, contextBlock, injected, options.prompt].filter(Boolean).join('\n\n');

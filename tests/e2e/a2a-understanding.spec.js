@@ -33,9 +33,9 @@ test.describe('Agent 通信理解测试', () => {
     }
     await catCheckboxes.first().check(); // opus
 
-    // 发送一个明确要求 @codex 回答特定问题的消息
+    // opus 会执行，然后 @codex，codex 通过 A2A 被触发
     const promptInput = page.locator('#prompt');
-    await promptInput.fill('请 @codex 告诉我你最擅长的编程语言是什么？');
+    await promptInput.fill('@opus 请 @codex 问它最擅长的编程语言是什么？');
     await page.locator('#runBtn').click();
 
     const logContainer = page.locator('#log');
@@ -47,7 +47,7 @@ test.describe('Agent 通信理解测试', () => {
     await expect(logContainer).toContainText(/opus|布偶猫|宪宪/i, { timeout: 5000 });
 
     // codex 被 A2A 触发后应该有输出
-    await expect(logContainer).toContainText(/codex|缅因猫|砚砚/i, { timeout: 5000 });
+    await expect(logContainer).toContainText(/codex|缅因猫|砚砚/i, { timeout: 30000 });
 
     // codex 的回复应该包含编程语言相关内容（不是自说自话）
     const codexMessage = logContainer.locator('.message-bubble').filter({ hasText: /codex/i });
