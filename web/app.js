@@ -12,6 +12,7 @@ const newSessionBtn = document.getElementById('newSessionBtn');
 let availableCats = [];
 let selectedCats = new Set();
 let eventSource = null;
+let currentSessionId = null; // 当前会话 ID
 
 // 流式输出：跟踪每个 agent 当前活动的消息
 const activeMessages = new Map(); // catId -> { element, contentEl, isThinking }
@@ -53,10 +54,10 @@ function appendMessage({ text, label, direction = 'left', kind = 'agent' }) {
   logEl.appendChild(row);
   logEl.scrollTop = logEl.scrollHeight;
 
-  // 保存消息到会话（非系统消息）
-  if (kind !== 'system' && window.SessionManager) {
+  // 保存消息到当前会话（非系统消息）
+  if (kind !== 'system' && window.SessionManager && currentSessionId) {
     const role = direction === 'right' ? 'user' : label;
-    window.SessionManager.addMessage(role, text);
+    window.SessionManager.addMessage(currentSessionId, role, text);
   }
 
   return { row, content };
@@ -128,9 +129,9 @@ function resetMessage(catId) {
     entry.content.style.color = '';
     entry.content.style.fontStyle = '';
 
-    // 保存完整消息到会话
-    if (entry.fullText && entry.fullText.trim() && window.SessionManager) {
-      window.SessionManager.addMessage(catId, entry.fullText.trim());
+    // 保存完整消息到当前会话
+    if (entry.fullText && entry.fullText.trim() && window.SessionManager && currentSessionId) {
+      window.SessionManager.addMessage(currentSessionId, catId, entry.fullText.trim());
       // 更新会话列表
       if (typeof renderSessionList === 'function') {
         renderSessionList();
@@ -258,6 +259,12 @@ function extractMentionedCats(prompt) {
 runBtn.addEventListener('click', async () => {
   const threadId = threadInput.value.trim() || 'default';
 
+  // 如果没有当前会话，提示用户
+  if (!currentSessionId) {
+    appendMessage({ text: '请先创建或选择一个会话。', label: 'System', kind: 'system' });
+    return;
+  }
+
   // 清空上一轮的活动消息
   clearActiveMessages();
 
@@ -308,13 +315,24 @@ threadInput.addEventListener('change', () => {
 
 // ========== 会话管理 ==========
 
+// 更新输入框状态
+function updateInputState() {
+  if (currentSessionId) {
+    promptInput.disabled = false;
+    promptInput.placeholder = '输入你的消息，点击发送后由选中的猫猫协作处理...';
+  } else {
+    promptInput.disabled = true;
+    promptInput.placeholder = '请先创建或选择一个会话';
+  }
+}
+
 // 初始化会话管理
 async function initSessionManager() {
   // 渲染会话列表
   await renderSessionList();
 
   // 如果有当前会话，加载消息
-  const currentSessionId = await window.SessionManager.getCurrentSessionId();
+  currentSessionId = await window.SessionManager.getCurrentSessionId();
   if (currentSessionId) {
     const session = await window.SessionManager.getSession(currentSessionId);
     if (session) {
@@ -322,14 +340,19 @@ async function initSessionManager() {
     }
   }
 
+  // 更新输入框状态
+  updateInputState();
+
   // 绑定会话列表事件
   window.HistoryPanel.bindEvents(sessionList, {
     onSwitch: async (sessionId) => {
+      currentSessionId = sessionId;
       const session = await window.SessionManager.switchSession(sessionId);
       if (session) {
         loadSessionMessages(session);
         await renderSessionList();
       }
+      updateInputState();
     },
     onRename: (sessionId) => {
       window.HistoryPanel.startRename(sessionList, sessionId);
@@ -337,25 +360,40 @@ async function initSessionManager() {
     onDelete: async (sessionId) => {
       if (confirm('确定要删除这个会话吗？')) {
         await window.SessionManager.deleteSession(sessionId);
+        currentSessionId = await window.SessionManager.getCurrentSessionId();
         await renderSessionList();
         // 如果删除的是当前会话，清空消息区域
-        const currentId = await window.SessionManager.getCurrentSessionId();
-        if (!currentId) {
+        if (!currentSessionId) {
           logEl.innerHTML = '';
         } else {
-          const session = await window.SessionManager.getSession(currentId);
+          const session = await window.SessionManager.getSession(currentSessionId);
           if (session) loadSessionMessages(session);
         }
+        updateInputState();
       }
     }
   });
 
   // 新建会话按钮
   newSessionBtn.addEventListener('click', async () => {
-    await window.SessionManager.createSession();
+    // 检查是否已有一个空白会话
+    const sessions = await window.SessionManager.getAllSessions();
+    const emptySession = sessions.find(s => !s.messageCount || s.messageCount === 0);
+
+    if (emptySession) {
+      // 切换到空白会话
+      currentSessionId = emptySession.id;
+      await window.SessionManager.switchSession(emptySession.id);
+    } else {
+      // 创建新会话
+      const session = await window.SessionManager.createSession();
+      currentSessionId = session.id;
+    }
+
     logEl.innerHTML = '';
     clearActiveMessages();
     await renderSessionList();
+    updateInputState();
     promptInput.focus();
   });
 
@@ -363,20 +401,18 @@ async function initSessionManager() {
   sessionSearch.addEventListener('input', async () => {
     const query = sessionSearch.value.trim();
     const sessions = await window.SessionManager.searchSessions(query);
-    const currentId = await window.SessionManager.getCurrentSessionId();
-    renderSessionListWithFilter(sessions, currentId);
+    renderSessionListWithFilter(sessions, currentSessionId);
   });
 }
 
 // 渲染会话列表
 async function renderSessionList() {
   const sessions = await window.SessionManager.getAllSessions();
-  const currentId = await window.SessionManager.getCurrentSessionId();
-  renderSessionListWithFilter(sessions, currentId);
+  renderSessionListWithFilter(sessions, currentSessionId);
 }
 
 // 渲染过滤后的会话列表
-function renderSessionListWithFilter(sessions, currentId) {
+function renderSessionListWithFilter(sessions, highlightId) {
   sessionList.innerHTML = '';
 
   if (sessions.length === 0) {
@@ -386,7 +422,7 @@ function renderSessionListWithFilter(sessions, currentId) {
 
   sessions.forEach(session => {
     const item = document.createElement('div');
-    item.className = 'session-item' + (currentId && session.id === currentId ? ' active' : '');
+    item.className = 'session-item' + (highlightId && session.id === highlightId ? ' active' : '');
     item.dataset.sessionId = session.id;
 
     item.innerHTML = `
