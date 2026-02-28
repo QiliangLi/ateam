@@ -165,10 +165,16 @@ function parseNdjson(stream, onEvent) {
 function parseCliEvent(cli, data) {
   if (cli === 'claude') {
     if (data.type === 'assistant' && data.message?.content) {
-      return data.message.content
-        .filter((block) => block.type === 'text')
-        .map((block) => block.text)
-        .join('');
+      const parts = [];
+      for (const block of data.message.content) {
+        if (block.type === 'text') {
+          parts.push(block.text);
+        } else if (block.type === 'thinking') {
+          // 提取思考过程，添加标记
+          parts.push(`🤔 思考：${block.thinking}`);
+        }
+      }
+      return parts.join('');
     }
     return '';
   }
