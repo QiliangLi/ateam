@@ -175,6 +175,21 @@ async function bootstrap() {
   connectStream(threadInput.value || 'default');
 }
 
+// 从 prompt 中提取 @ 提及的 agent
+function extractMentionedCats(prompt) {
+  const allCats = ['opus', 'codex', 'gemini'];
+  const mentioned = [];
+  const regex = /@(\w+)/gi;
+  let match;
+  while ((match = regex.exec(prompt)) !== null) {
+    const catId = match[1].toLowerCase();
+    if (allCats.includes(catId) && !mentioned.includes(catId)) {
+      mentioned.push(catId);
+    }
+  }
+  return mentioned;
+}
+
 runBtn.addEventListener('click', async () => {
   const threadId = threadInput.value.trim() || 'default';
 
@@ -183,15 +198,18 @@ runBtn.addEventListener('click', async () => {
 
   connectStream(threadId);
 
-  const cats = Array.from(selectedCats);
-  if (cats.length === 0) {
-    appendMessage({ text: '请至少选择一只猫。', label: 'System', kind: 'system' });
-    return;
-  }
-
   const prompt = promptInput.value.trim();
   if (!prompt) {
     appendMessage({ text: '请输入 prompt。', label: 'System', kind: 'system' });
+    return;
+  }
+
+  // 从 prompt 中提取 @ 提及的 agent，如果没有则使用选中的 agent
+  const mentionedCats = extractMentionedCats(prompt);
+  const cats = mentionedCats.length > 0 ? mentionedCats : Array.from(selectedCats);
+
+  if (cats.length === 0) {
+    appendMessage({ text: '请至少选择一只猫或在 prompt 中 @ 指定。', label: 'System', kind: 'system' });
     return;
   }
 
@@ -204,7 +222,7 @@ runBtn.addEventListener('click', async () => {
 
   promptInput.value = '';
 
-  // 立即为选中的 agent 创建 "正在思考..." 占位符
+  // 立即为要执行的 agent 创建 "正在思考..." 占位符
   cats.forEach(catId => ensureMessage(catId));
 
   await fetch('/api/run', {

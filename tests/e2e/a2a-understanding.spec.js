@@ -68,7 +68,8 @@ test.describe('Agent 通信理解测试', () => {
     await catCheckboxes.nth(2).check(); // gemini
 
     const promptInput = page.locator('#prompt');
-    await promptInput.fill('请告诉我你是谁？你的名字是什么？');
+    // 必须在 prompt 中 @gemini 才能触发执行
+    await promptInput.fill('@gemini 请告诉我你是谁？你的名字是什么？');
     await page.locator('#runBtn').click();
 
     const logContainer = page.locator('#log');
@@ -100,7 +101,8 @@ test.describe('Agent 通信理解测试', () => {
     await catCheckboxes.nth(2).check();  // gemini
 
     const promptInput = page.locator('#prompt');
-    await promptInput.fill('每个人请介绍自己，说出自己的名字');
+    // 必须在 prompt 中 @opus 和 @gemini 才能触发执行
+    await promptInput.fill('@opus @gemini 每个人请介绍自己，说出自己的名字');
     await page.locator('#runBtn').click();
 
     const logContainer = page.locator('#log');
