@@ -1,182 +1,105 @@
 /**
  * 会话管理模块
  *
- * 负责管理会话的存储和检索，使用 localStorage 持久化
+ * 负责管理会话的存储和检索，通过后端 API 存储
  */
 
-const STORAGE_KEY = 'cat-cafe-sessions';
+const DEFAULT_LOAD_LIMIT = 500;
 
-// 生成唯一 ID
-function generateId() {
-  return 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+// 获取会话列表
+async function getAllSessions() {
+  const res = await fetch('/api/sessions');
+  const data = await res.json();
+  return data.sessions || [];
 }
 
-// 获取所有数据
-function getData() {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    console.error('Failed to load sessions:', e);
-  }
-  return { sessions: [], currentSessionId: null };
-}
-
-// 保存数据
-function saveData(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.error('Failed to save sessions:', e);
-  }
+// 获取当前会话 ID
+async function getCurrentSessionId() {
+  const res = await fetch('/api/sessions');
+  const data = await res.json();
+  return data.currentSessionId || null;
 }
 
 // 创建新会话
-function createSession() {
-  const data = getData();
-  const session = {
-    id: generateId(),
-    title: null, // 稍后根据第一条消息自动生成
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    messages: []
-  };
-  data.sessions.unshift(session);
-  data.currentSessionId = session.id;
-  saveData(data);
-  return session;
+async function createSession() {
+  const res = await fetch('/api/sessions', { method: 'POST' });
+  return await res.json();
 }
 
-// 获取当前会话
-function getCurrentSession() {
-  const data = getData();
-  if (!data.currentSessionId) {
-    return null;
+// 获取会话详情
+async function getSession(sessionId, options = {}) {
+  let url = `/api/sessions/${sessionId}`;
+  const params = [];
+  if (options.before) {
+    params.push(`before=${options.before}`);
   }
-  return data.sessions.find(s => s.id === data.currentSessionId) || null;
+  if (params.length > 0) {
+    url += '?' + params.join('&');
+  }
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  return await res.json();
 }
 
 // 切换会话
-function switchSession(id) {
-  const data = getData();
-  const session = data.sessions.find(s => s.id === id);
-  if (session) {
-    data.currentSessionId = id;
-    saveData(data);
-    return session;
-  }
-  return null;
+async function switchSession(sessionId) {
+  const res = await fetch(`/api/sessions/${sessionId}/switch`, { method: 'POST' });
+  if (!res.ok) return null;
+  return await res.json();
 }
 
-// 添加消息到当前会话
-function addMessage(role, content) {
-  const data = getData();
-  const session = data.sessions.find(s => s.id === data.currentSessionId);
-  if (!session) {
-    // 如果没有当前会话，创建一个
-    const newSession = createSession();
-    return addMessage(role, content);
+// 添加消息到会话
+async function addMessage(sessionId, role, content) {
+  // 如果没有 sessionId，先创建一个
+  if (!sessionId) {
+    const session = await createSession();
+    sessionId = session.id;
   }
 
-  const message = {
-    role,
-    content,
-    ts: Date.now()
-  };
-  session.messages.push(message);
-  session.updatedAt = Date.now();
-
-  // 自动生成标题（根据第一条用户消息）
-  if (!session.title && role === 'user') {
-    session.title = content.slice(0, 30) + (content.length > 30 ? '...' : '');
-  }
-
-  saveData(data);
-  return message;
+  const res = await fetch(`/api/sessions/${sessionId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role, content })
+  });
+  if (!res.ok) return null;
+  return await res.json();
 }
 
 // 重命名会话
-function renameSession(id, title) {
-  const data = getData();
-  const session = data.sessions.find(s => s.id === id);
-  if (session) {
-    session.title = title;
-    session.updatedAt = Date.now();
-    saveData(data);
-    return session;
-  }
-  return null;
+async function renameSession(sessionId, title) {
+  const res = await fetch(`/api/sessions/${sessionId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title })
+  });
+  if (!res.ok) return null;
+  return await res.json();
 }
 
 // 删除会话
-function deleteSession(id) {
-  const data = getData();
-  const index = data.sessions.findIndex(s => s.id === id);
-  if (index !== -1) {
-    data.sessions.splice(index, 1);
-    // 如果删除的是当前会话，切换到第一个会话
-    if (data.currentSessionId === id) {
-      data.currentSessionId = data.sessions[0]?.id || null;
-    }
-    saveData(data);
-    return true;
-  }
-  return false;
+async function deleteSession(sessionId) {
+  const res = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+  return res.ok;
 }
 
 // 搜索会话
-function searchSessions(query) {
-  const data = getData();
-  if (!query) {
-    return data.sessions;
-  }
-  const lowerQuery = query.toLowerCase();
-  return data.sessions.filter(s => {
-    // 搜索标题
-    if (s.title && s.title.toLowerCase().includes(lowerQuery)) {
-      return true;
-    }
-    // 搜索消息内容
-    return s.messages.some(m => m.content.toLowerCase().includes(lowerQuery));
-  });
-}
-
-// 获取所有会话摘要
-function getAllSessions() {
-  const data = getData();
-  return data.sessions.map(s => ({
-    id: s.id,
-    title: s.title || '未命名会话',
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-    messageCount: s.messages.length
-  }));
-}
-
-// 获取会话消息
-function getSessionMessages(id) {
-  const data = getData();
-  const session = data.sessions.find(s => s.id === id);
-  return session ? session.messages : [];
-}
-
-// 清空所有会话
-function clearAllSessions() {
-  saveData({ sessions: [], currentSessionId: null });
+async function searchSessions(query) {
+  const url = query ? `/api/sessions?search=${encodeURIComponent(query)}` : '/api/sessions';
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.sessions || [];
 }
 
 // 导出模块
 window.SessionManager = {
+  getAllSessions,
+  getCurrentSessionId,
   createSession,
-  getCurrentSession,
+  getSession,
   switchSession,
   addMessage,
   renameSession,
   deleteSession,
   searchSessions,
-  getAllSessions,
-  getSessionMessages,
-  clearAllSessions
+  DEFAULT_LOAD_LIMIT
 };

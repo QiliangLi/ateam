@@ -15,37 +15,10 @@ function formatTime(ts) {
   return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
 }
 
-// 渲染会话列表
+// 渲染会话列表（已废弃，现在由 app.js 中的 renderSessionListWithFilter 处理）
 function render(container) {
-  const sessions = window.SessionManager.getAllSessions();
-  const currentSession = window.SessionManager.getCurrentSession();
-  const currentId = currentSession?.id;
-
-  container.innerHTML = '';
-
-  if (sessions.length === 0) {
-    container.innerHTML = '<div class="no-sessions">暂无会话记录</div>';
-    return;
-  }
-
-  sessions.forEach(session => {
-    const item = document.createElement('div');
-    item.className = 'session-item' + (session.id === currentId ? ' active' : '');
-    item.dataset.sessionId = session.id;
-
-    item.innerHTML = `
-      <div class="session-content">
-        <div class="session-title">${escapeHtml(session.title)}</div>
-        <div class="session-meta">${session.messageCount} 条消息 · ${formatTime(session.updatedAt)}</div>
-      </div>
-      <div class="session-actions">
-        <button class="session-rename" title="重命名">✏️</button>
-        <button class="session-delete" title="删除">🗑️</button>
-      </div>
-    `;
-
-    container.appendChild(item);
-  });
+  // 不再使用，保留空函数以保持兼容
+  container.innerHTML = '<div class="no-sessions">加载中...</div>';
 }
 
 // HTML 转义
@@ -108,20 +81,25 @@ function startRename(container, sessionId) {
   input.focus();
   input.select();
 
-  const finishRename = () => {
+  const finishRename = async () => {
     const newTitle = input.value.trim() || currentTitle;
-    window.SessionManager.renameSession(sessionId, newTitle);
-    render(container);
+    await window.SessionManager.renameSession(sessionId, newTitle);
+    // 触发重新渲染（通过全局事件或直接调用）
+    if (window.renderSessionList) {
+      await window.renderSessionList();
+    }
   };
 
   input.addEventListener('blur', finishRename);
-  input.addEventListener('keydown', (e) => {
+  input.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      finishRename();
+      await finishRename();
     }
     if (e.key === 'Escape') {
-      render(container);
+      if (window.renderSessionList) {
+        await window.renderSessionList();
+      }
     }
   });
 }

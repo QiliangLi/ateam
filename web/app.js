@@ -309,69 +309,75 @@ threadInput.addEventListener('change', () => {
 // ========== 会话管理 ==========
 
 // 初始化会话管理
-function initSessionManager() {
+async function initSessionManager() {
   // 渲染会话列表
-  renderSessionList();
+  await renderSessionList();
 
   // 如果有当前会话，加载消息
-  const currentSession = window.SessionManager.getCurrentSession();
-  if (currentSession) {
-    loadSessionMessages(currentSession);
+  const currentSessionId = await window.SessionManager.getCurrentSessionId();
+  if (currentSessionId) {
+    const session = await window.SessionManager.getSession(currentSessionId);
+    if (session) {
+      loadSessionMessages(session);
+    }
   }
 
   // 绑定会话列表事件
   window.HistoryPanel.bindEvents(sessionList, {
-    onSwitch: (sessionId) => {
-      const session = window.SessionManager.switchSession(sessionId);
+    onSwitch: async (sessionId) => {
+      const session = await window.SessionManager.switchSession(sessionId);
       if (session) {
         loadSessionMessages(session);
-        renderSessionList();
+        await renderSessionList();
       }
     },
     onRename: (sessionId) => {
       window.HistoryPanel.startRename(sessionList, sessionId);
     },
-    onDelete: (sessionId) => {
+    onDelete: async (sessionId) => {
       if (confirm('确定要删除这个会话吗？')) {
-        window.SessionManager.deleteSession(sessionId);
-        renderSessionList();
+        await window.SessionManager.deleteSession(sessionId);
+        await renderSessionList();
         // 如果删除的是当前会话，清空消息区域
-        const current = window.SessionManager.getCurrentSession();
-        if (!current) {
+        const currentId = await window.SessionManager.getCurrentSessionId();
+        if (!currentId) {
           logEl.innerHTML = '';
         } else {
-          loadSessionMessages(current);
+          const session = await window.SessionManager.getSession(currentId);
+          if (session) loadSessionMessages(session);
         }
       }
     }
   });
 
   // 新建会话按钮
-  newSessionBtn.addEventListener('click', () => {
-    const session = window.SessionManager.createSession();
+  newSessionBtn.addEventListener('click', async () => {
+    await window.SessionManager.createSession();
     logEl.innerHTML = '';
     clearActiveMessages();
-    renderSessionList();
+    await renderSessionList();
     promptInput.focus();
   });
 
   // 搜索框
-  sessionSearch.addEventListener('input', () => {
+  sessionSearch.addEventListener('input', async () => {
     const query = sessionSearch.value.trim();
-    const sessions = window.SessionManager.searchSessions(query);
-    renderSessionListWithFilter(sessions);
+    const sessions = await window.SessionManager.searchSessions(query);
+    const currentId = await window.SessionManager.getCurrentSessionId();
+    renderSessionListWithFilter(sessions, currentId);
   });
 }
 
 // 渲染会话列表
-function renderSessionList() {
-  window.HistoryPanel.render(sessionList);
+async function renderSessionList() {
+  const sessions = await window.SessionManager.getAllSessions();
+  const currentId = await window.SessionManager.getCurrentSessionId();
+  renderSessionListWithFilter(sessions, currentId);
 }
 
 // 渲染过滤后的会话列表
-function renderSessionListWithFilter(sessions) {
+function renderSessionListWithFilter(sessions, currentId) {
   sessionList.innerHTML = '';
-  const current = window.SessionManager.getCurrentSession();
 
   if (sessions.length === 0) {
     sessionList.innerHTML = '<div class="no-sessions">没有匹配的会话</div>';
@@ -380,7 +386,7 @@ function renderSessionListWithFilter(sessions) {
 
   sessions.forEach(session => {
     const item = document.createElement('div');
-    item.className = 'session-item' + (current && session.id === current.id ? ' active' : '');
+    item.className = 'session-item' + (currentId && session.id === currentId ? ' active' : '');
     item.dataset.sessionId = session.id;
 
     item.innerHTML = `

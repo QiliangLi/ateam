@@ -9,6 +9,7 @@ const { enqueueA2ATargets } = require('../a2a/registry');
 const { routeSerial, getDefaultMcpServerPath } = require('../a2a/router');
 const { listCatIds } = require('../config/cats');
 const { writeIoLog } = require('../utils/io-logger');
+const sessionStore = require('../utils/session-store');
 
 const PORT = Number(process.env.CAT_CAFE_PORT || 3200);
 const WEB_DIR = path.join(process.cwd(), 'web');
@@ -166,6 +167,102 @@ const server = http.createServer(async (req, res) => {
       cats: listCatIds()
     });
   }
+
+  // ========== Sessions API ==========
+
+  // GET /api/sessions - 获取会话列表
+  if (req.method === 'GET' && pathname === '/api/sessions') {
+    const query = parsedUrl.query.search || '';
+    const sessions = query
+      ? sessionStore.searchSessions(query)
+      : sessionStore.getAllSessions();
+    return sendJson(res, 200, { sessions, currentSessionId: sessionStore.getCurrentSessionId() });
+  }
+
+  // POST /api/sessions - 创建新会话
+  if (req.method === 'POST' && pathname === '/api/sessions') {
+    const session = sessionStore.createSession();
+    return sendJson(res, 200, session);
+  }
+
+  // GET /api/sessions/:id - 获取会话详情
+  const sessionMatch = pathname.match(/^\/api\/sessions\/([^\/]+)$/);
+  if (sessionMatch && req.method === 'GET') {
+    const sessionId = sessionMatch[1];
+    const before = parsedUrl.query.before ? parseInt(parsedUrl.query.before) : undefined;
+    const session = sessionStore.getSession(sessionId, { before });
+    if (!session) {
+      return sendJson(res, 404, { error: 'session_not_found' });
+    }
+    // 获取消息总数
+    const full = sessionStore.getSessionFull(sessionId);
+    session.totalMessages = full ? full.messages.length : 0;
+    return sendJson(res, 200, session);
+  }
+
+  // PUT /api/sessions/:id - 更新会话（重命名）
+  if (sessionMatch && req.method === 'PUT') {
+    const sessionId = sessionMatch[1];
+    const raw = await readBody(req);
+    let payload = {};
+    try {
+      payload = JSON.parse(raw || '{}');
+    } catch (e) {
+      return sendJson(res, 400, { error: 'invalid_json' });
+    }
+    if (payload.title) {
+      const session = sessionStore.renameSession(sessionId, payload.title);
+      if (!session) {
+        return sendJson(res, 404, { error: 'session_not_found' });
+      }
+      return sendJson(res, 200, session);
+    }
+    return sendJson(res, 400, { error: 'title_required' });
+  }
+
+  // DELETE /api/sessions/:id - 删除会话
+  if (sessionMatch && req.method === 'DELETE') {
+    const sessionId = sessionMatch[1];
+    const deleted = sessionStore.deleteSession(sessionId);
+    if (!deleted) {
+      return sendJson(res, 404, { error: 'session_not_found' });
+    }
+    return sendJson(res, 200, { success: true });
+  }
+
+  // POST /api/sessions/:id/switch - 切换会话
+  if (pathname.match(/^\/api\/sessions\/[^\/]+\/switch$/) && req.method === 'POST') {
+    const sessionId = pathname.split('/')[3];
+    const session = sessionStore.switchSession(sessionId);
+    if (!session) {
+      return sendJson(res, 404, { error: 'session_not_found' });
+    }
+    const full = sessionStore.getSessionFull(sessionId);
+    session.totalMessages = full ? full.messages.length : 0;
+    return sendJson(res, 200, session);
+  }
+
+  // POST /api/sessions/:id/messages - 添加消息
+  if (pathname.match(/^\/api\/sessions\/[^\/]+\/messages$/) && req.method === 'POST') {
+    const sessionId = pathname.split('/')[3];
+    const raw = await readBody(req);
+    let payload = {};
+    try {
+      payload = JSON.parse(raw || '{}');
+    } catch (e) {
+      return sendJson(res, 400, { error: 'invalid_json' });
+    }
+    if (!payload.role || !payload.content) {
+      return sendJson(res, 400, { error: 'role_and_content_required' });
+    }
+    const message = sessionStore.addMessage(sessionId, payload.role, payload.content);
+    if (!message) {
+      return sendJson(res, 404, { error: 'session_not_found' });
+    }
+    return sendJson(res, 200, message);
+  }
+
+  // ========== End Sessions API ==========
 
   if (req.method === 'POST' && pathname === '/api/run') {
     const raw = await readBody(req);
