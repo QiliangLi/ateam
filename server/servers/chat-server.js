@@ -19,6 +19,7 @@ const callbackToken = randomUUID();
 const threadMessages = new Map();
 const sseClients = new Set();
 const activeThreads = new Set();
+const threadQueues = new Map(); // threadId -> [{ payload, resolve }]
 
 function getThreadMessages(threadId) {
   if (!threadMessages.has(threadId)) {
@@ -78,9 +79,16 @@ function serveStatic(req, res) {
 
 async function handleRun(payload) {
   const threadId = payload.threadId || 'default';
+
+  // 如果 thread 正在执行，将请求加入队列
   if (activeThreads.has(threadId)) {
-    pushEvent(threadId, { type: 'system', message: '当前 thread 正在执行中，请稍后再试。' });
-    return;
+    return new Promise((resolve) => {
+      if (!threadQueues.has(threadId)) {
+        threadQueues.set(threadId, []);
+      }
+      threadQueues.get(threadId).push({ payload, resolve });
+      pushEvent(threadId, { type: 'system', message: '请求已加入队列，请稍候...' });
+    });
   }
 
   const cats = Array.isArray(payload.cats) && payload.cats.length
@@ -113,6 +121,19 @@ async function handleRun(payload) {
     pushEvent(threadId, { type: 'system', message: `执行失败: ${err.message}` });
   } finally {
     activeThreads.delete(threadId);
+
+    // 检查队列中是否有等待的请求
+    const queue = threadQueues.get(threadId);
+    if (queue && queue.length > 0) {
+      const next = queue.shift();
+      if (queue.length === 0) {
+        threadQueues.delete(threadId);
+      }
+      // 异步处理下一个请求
+      setImmediate(() => {
+        handleRun(next.payload).then(next.resolve);
+      });
+    }
   }
 }
 
