@@ -146,8 +146,8 @@ function resetMessage(catId) {
       if (!text.endsWith('正在思考...')) {
         text = filterMessage(text);
         if (text) {
+          entry.saved = true;  // 先标记，防止 race condition
           window.SessionManager.addMessage(currentSessionId, catId, text);
-          entry.saved = true;  // 标记已保存，防止重复
           // 更新会话列表
           if (typeof renderSessionList === 'function') {
             renderSessionList();
