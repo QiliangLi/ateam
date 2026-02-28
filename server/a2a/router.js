@@ -12,10 +12,15 @@ function buildA2AMentionInstructions(currentCatId) {
   const allCats = ['opus', 'codex', 'gemini'];
   const otherCats = allCats.filter(id => id !== currentCatId);
   return `可用艾特：${otherCats.map(id => '@' + id).join('，')}。
-重要规则：
-- 禁止 @ 自己（你现在是 ${currentCatId}）
-- 仅在需要对方回复时才使用 @，把 @ 放在新的一行行首
-- 不要输出 "CAT_CAFE_POST_MESSAGE"、"_MESSAGE"、"CAT_CAFE_POST" 等技术关键词`;
+
+## 艾特规则（非常重要）
+1. 禁止 @ 自己（你现在是 ${currentCatId}）
+2. 每个 agent 只需要 @ 一次，不要重复 @
+3. 仅在真正需要对方回复时才 @，如果只是提到对方名字不需要 @
+4. 把 @ 放在新的一行行首，格式如：
+   @codex 请你回答这个问题
+5. 不要输出任何技术关键词：CAT_CAFE_POST_MESSAGE、_MESSAGE、CAT_CAFE_POST、threadId 等
+6. 不要输出任务入口门禁、任务描述等内容`;
 }
 
 function extractCallbackMessages(text) {
@@ -60,12 +65,17 @@ const FILTER_PATTERNS = [
   /错题本已读/g,
   /工作环境/g,
   /前置检查/g,
+  /可以开始/g,
   /---/g,
   /CAT_CAFE_POST_MESSAGE/g,
   /_MESSAGE/g,
   /CAT_CAFE_POST/g,
   /\\"threadId\\"/g,
   /\\"content\\"/g,
+  // 过滤门禁检查格式（中文冒号开头的行）
+  /^：.+$/gm,
+  // 过滤单独的英文冒号开头的行
+  /^:\s*(任务|门禁|判断|工作|前置|对应|可以)/gm,
 ];
 
 function filterCallbackOutput(chunk) {
@@ -321,6 +331,14 @@ async function routeSerial(worklist, options) {
       markExecuted(options.threadId, catId);
       const { cleanText, messages } = extractCallbackMessages(responseText);
 
+      // 存储 agent 的回复到 threadMessages（让后续 agent 能看到）
+      // 注意：cleanText 已经过滤了技术内容，只保留实际对话内容
+      const filteredCleanText = filterCallbackOutput(cleanText);
+      if (filteredCleanText && filteredCleanText.trim()) {
+        await postCallbackMessage(options, catId, filteredCleanText.trim(), options.threadId);
+      }
+
+      // 存储显式的 callback messages
       for (const message of messages) {
         await postCallbackMessage(options, catId, message.content, message.threadId);
       }
