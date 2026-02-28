@@ -6,55 +6,56 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  /* 深色主题 - 炭灰色调 */
-  --bg-primary: #0f0f11;
-  --bg-secondary: #18181b;
-  --bg-tertiary: #1f1f23;
-  --bg-hover: #27272a;
-  --bg-active: #2d2d31;
+  /* 深色主题 - 更黑的背景 */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-tertiary: #141414;
+  --bg-hover: #1a1a1a;
+  --bg-active: #222222;
 
   /* 文字 */
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  --text-primary: #ffffff;
+  --text-secondary: #999999;
+  --text-muted: #555555;
 
-  /* 强调色 - 紫罗兰 */
-  --accent: #8b5cf6;
-  --accent-hover: #a78bfa;
-  --accent-muted: rgba(139, 92, 246, 0.15);
+  /* 强调色 - 亮蓝色 */
+  --accent: #2563eb;
+  --accent-hover: #3b82f6;
+  --accent-muted: rgba(37, 99, 235, 0.2);
 
-  /* 用户消息 */
-  --user-bubble: #8b5cf6;
+  /* 用户消息 - 亮蓝色 */
+  --user-bubble: #2563eb;
   --user-text: #ffffff;
 
-  /* Agent 消息 */
-  --agent-bubble: #27272a;
-  --agent-text: #fafafa;
+  /* Agent 消息 - 深灰 */
+  --agent-bubble: #1a1a1a;
+  --agent-text: #e5e5e5;
+  --agent-border: #262626;
 
   /* 系统消息 */
-  --system-bubble: #1c1917;
-  --system-text: #a8a29e;
-  --system-border: #44403c;
+  --system-bubble: #0f0f0f;
+  --system-text: #555555;
+  --system-border: #1a1a1a;
 
   /* 边框和分割线 */
-  --border: #27272a;
-  --border-light: #3f3f46;
+  --border: #1a1a1a;
+  --border-light: #262626;
 
   /* 侧边栏 */
-  --sidebar-bg: #0c0c0e;
-  --sidebar-border: #1f1f23;
+  --sidebar-bg: #000000;
+  --sidebar-border: #111111;
 
   /* 尺寸 */
-  --sidebar-width: 280px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --sidebar-width: 260px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
   --radius-lg: 16px;
   --radius-full: 9999px;
 
   /* 阴影 */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.7);
 
   /* 过渡 */
   --transition-fast: 0.1s ease;
@@ -94,6 +95,15 @@ body {
   border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
+  transition: width 0.3s ease, min-width 0.3s ease;
+}
+
+/* 可选：收起侧边栏 */
+.history-panel.collapsed {
+  width: 0;
+  min-width: 0;
+  border-right: none;
+  overflow: hidden;
 }
 
 .history-header {
@@ -260,7 +270,7 @@ body {
 /* 顶部栏 */
 
 .chat-header {
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
@@ -268,17 +278,43 @@ body {
   background: var(--bg-secondary);
 }
 
-.chat-header h1 {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  transform: none;
+}
+
+.chat-header h1 {
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .chat-header p {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .status-pill {
@@ -311,12 +347,13 @@ body {
 /* 工具栏 */
 
 .chat-toolbar {
-  padding: 12px 20px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   background: var(--bg-secondary);
+  font-size: 12px;
 }
 
 .toolbar-field {
@@ -428,14 +465,15 @@ input:focus, textarea:focus {
 
 .message-row {
   display: flex;
-  gap: 12px;
-  animation: fadeIn 0.3s ease;
+  gap: 10px;
+  align-items: flex-start;
+  animation: fadeIn 0.2s ease;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -444,27 +482,46 @@ input:focus, textarea:focus {
 }
 
 .message-row.right {
-  justify-content: flex-end;
+  flex-direction: row-reverse;
+}
+
+/* 消息头像 */
+
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1a1a1a 0%, #262626 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  border: none;
+}
+
+.message-row.right .message-avatar {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 /* 消息气泡 */
 
 .message-bubble {
-  max-width: 70%;
-  padding: 12px 16px;
+  max-width: 60%;
+  padding: 10px 14px;
   border-radius: var(--radius-lg);
   background: var(--agent-bubble);
-  border: 1px solid var(--border);
+  border: 1px solid var(--agent-border);
 }
 
 .message-row.right .message-bubble {
   background: var(--user-bubble);
   border-color: transparent;
-  border-bottom-right-radius: var(--radius-sm);
+  border-top-right-radius: 6px;
 }
 
 .message-row:not(.right):not(.system) .message-bubble {
-  border-bottom-left-radius: var(--radius-sm);
+  border-top-left-radius: 6px;
 }
 
 .message-row.system .message-bubble {
@@ -472,6 +529,7 @@ input:focus, textarea:focus {
   border-color: var(--system-border);
   max-width: 100%;
   text-align: center;
+  padding: 8px 12px;
 }
 
 /* 消息元信息 */
@@ -480,26 +538,27 @@ input:focus, textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-  font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
+  gap: 10px;
+  margin-bottom: 3px;
 }
 
-.bubble-meta .author {
+.bubble-author {
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
-.message-row.right .bubble-meta .author {
-  color: rgba(255, 255, 255, 0.8);
+.message-row.right .bubble-author {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.bubble-meta .time {
+.bubble-time {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
   color: var(--text-muted);
 }
 
-.message-row.right .bubble-meta .time {
+.message-row.right .bubble-time {
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -507,7 +566,7 @@ input:focus, textarea:focus {
 
 .bubble-content {
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;

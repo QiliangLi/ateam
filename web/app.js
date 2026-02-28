@@ -8,11 +8,20 @@ const promptInput = document.getElementById('prompt');
 const sessionList = document.getElementById('sessionList');
 const sessionSearch = document.getElementById('sessionSearch');
 const newSessionBtn = document.getElementById('newSessionBtn');
+const toggleSidebarBtn = document.getElementById('toggleSidebar');
+const historyPanel = document.querySelector('.history-panel');
 
 let availableCats = [];
 let selectedCats = new Set();
 let eventSource = null;
 let currentSessionId = null; // 当前会话 ID
+
+// 切换侧边栏
+if (toggleSidebarBtn && historyPanel) {
+  toggleSidebarBtn.addEventListener('click', () => {
+    historyPanel.classList.toggle('collapsed');
+  });
+}
 
 // 流式输出：跟踪每个 agent 当前活动的消息
 const activeMessages = new Map(); // catId -> { element, contentEl, isThinking }
@@ -25,9 +34,29 @@ function formatTime(ts = Date.now()) {
   });
 }
 
+// 获取头像 emoji
+function getAvatarEmoji(label) {
+  const avatars = {
+    'opus': '🐱',
+    'codex': '🐈',
+    'gemini': '😺',
+    'You': '👤',
+    'System': '⚙️'
+  };
+  return avatars[label] || '💬';
+}
+
 function appendMessage({ text, label, direction = 'left', kind = 'agent', save = true }) {
   const row = document.createElement('article');
   row.className = `message-row ${direction === 'right' ? 'right' : ''} ${kind === 'system' ? 'system' : ''}`.trim();
+
+  // 创建头像（非系统消息）
+  if (kind !== 'system') {
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.textContent = getAvatarEmoji(label);
+    row.appendChild(avatar);
+  }
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
@@ -36,9 +65,11 @@ function appendMessage({ text, label, direction = 'left', kind = 'agent', save =
   meta.className = 'bubble-meta';
 
   const author = document.createElement('span');
+  author.className = 'bubble-author';
   author.textContent = label;
 
   const time = document.createElement('span');
+  time.className = 'bubble-time';
   time.textContent = formatTime();
 
   const content = document.createElement('div');
