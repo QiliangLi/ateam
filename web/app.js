@@ -5,6 +5,9 @@ const runBtn = document.getElementById('runBtn');
 const clearBtn = document.getElementById('clearBtn');
 const threadInput = document.getElementById('threadId');
 const promptInput = document.getElementById('prompt');
+const sessionList = document.getElementById('sessionList');
+const sessionSearch = document.getElementById('sessionSearch');
+const newSessionBtn = document.getElementById('newSessionBtn');
 
 let availableCats = [];
 let selectedCats = new Set();
@@ -49,6 +52,12 @@ function appendMessage({ text, label, direction = 'left', kind = 'agent' }) {
 
   logEl.appendChild(row);
   logEl.scrollTop = logEl.scrollHeight;
+
+  // 保存消息到会话（非系统消息）
+  if (kind !== 'system' && window.SessionManager) {
+    const role = direction === 'right' ? 'user' : label;
+    window.SessionManager.addMessage(role, text);
+  }
 
   return { row, content };
 }
@@ -118,6 +127,15 @@ function resetMessage(catId) {
     // 恢复正常样式
     entry.content.style.color = '';
     entry.content.style.fontStyle = '';
+
+    // 保存完整消息到会话
+    if (entry.fullText && entry.fullText.trim() && window.SessionManager) {
+      window.SessionManager.addMessage(catId, entry.fullText.trim());
+      // 更新会话列表
+      if (typeof renderSessionList === 'function') {
+        renderSessionList();
+      }
+    }
   }
   activeMessages.delete(catId);
 }
@@ -288,7 +306,137 @@ threadInput.addEventListener('change', () => {
   connectStream(threadInput.value.trim() || 'default');
 });
 
+// ========== 会话管理 ==========
+
+// 初始化会话管理
+function initSessionManager() {
+  // 渲染会话列表
+  renderSessionList();
+
+  // 如果有当前会话，加载消息
+  const currentSession = window.SessionManager.getCurrentSession();
+  if (currentSession) {
+    loadSessionMessages(currentSession);
+  }
+
+  // 绑定会话列表事件
+  window.HistoryPanel.bindEvents(sessionList, {
+    onSwitch: (sessionId) => {
+      const session = window.SessionManager.switchSession(sessionId);
+      if (session) {
+        loadSessionMessages(session);
+        renderSessionList();
+      }
+    },
+    onRename: (sessionId) => {
+      window.HistoryPanel.startRename(sessionList, sessionId);
+    },
+    onDelete: (sessionId) => {
+      if (confirm('确定要删除这个会话吗？')) {
+        window.SessionManager.deleteSession(sessionId);
+        renderSessionList();
+        // 如果删除的是当前会话，清空消息区域
+        const current = window.SessionManager.getCurrentSession();
+        if (!current) {
+          logEl.innerHTML = '';
+        } else {
+          loadSessionMessages(current);
+        }
+      }
+    }
+  });
+
+  // 新建会话按钮
+  newSessionBtn.addEventListener('click', () => {
+    const session = window.SessionManager.createSession();
+    logEl.innerHTML = '';
+    clearActiveMessages();
+    renderSessionList();
+    promptInput.focus();
+  });
+
+  // 搜索框
+  sessionSearch.addEventListener('input', () => {
+    const query = sessionSearch.value.trim();
+    const sessions = window.SessionManager.searchSessions(query);
+    renderSessionListWithFilter(sessions);
+  });
+}
+
+// 渲染会话列表
+function renderSessionList() {
+  window.HistoryPanel.render(sessionList);
+}
+
+// 渲染过滤后的会话列表
+function renderSessionListWithFilter(sessions) {
+  sessionList.innerHTML = '';
+  const current = window.SessionManager.getCurrentSession();
+
+  if (sessions.length === 0) {
+    sessionList.innerHTML = '<div class="no-sessions">没有匹配的会话</div>';
+    return;
+  }
+
+  sessions.forEach(session => {
+    const item = document.createElement('div');
+    item.className = 'session-item' + (current && session.id === current.id ? ' active' : '');
+    item.dataset.sessionId = session.id;
+
+    item.innerHTML = `
+      <div class="session-content">
+        <div class="session-title">${escapeHtml(session.title || '未命名会话')}</div>
+        <div class="session-meta">${session.messageCount || 0} 条消息</div>
+      </div>
+      <div class="session-actions">
+        <button class="session-rename" title="重命名">✏️</button>
+        <button class="session-delete" title="删除">🗑️</button>
+      </div>
+    `;
+
+    sessionList.appendChild(item);
+  });
+}
+
+// 加载会话消息到界面
+function loadSessionMessages(session) {
+  logEl.innerHTML = '';
+  clearActiveMessages();
+
+  if (!session || !session.messages) return;
+
+  session.messages.forEach(msg => {
+    const isUser = msg.role === 'user';
+    appendMessage({
+      text: msg.content,
+      label: isUser ? 'You' : msg.role,
+      direction: isUser ? 'right' : 'left',
+      kind: isUser ? 'user' : 'agent'
+    });
+  });
+}
+
+// HTML 转义
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 保存消息到当前会话
+function saveMessageToSession(role, content) {
+  if (window.SessionManager) {
+    window.SessionManager.addMessage(role, content);
+    renderSessionList();
+  }
+}
+
+// ========== 启动 ==========
+
 bootstrap().catch((err) => {
   statusText.textContent = '初始化失败';
   appendMessage({ text: err.message, label: 'System', kind: 'system' });
 });
+
+// 在 bootstrap 完成后初始化会话管理
+initSessionManager();

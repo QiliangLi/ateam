@@ -8,36 +8,50 @@
   </head>
   <body>
     <main class="chat-app">
-      <header class="chat-header">
-        <div>
-          <h1>Cat Cafe Chat</h1>
-          <p>多猫协作 · Web 聊天界面</p>
+      <!-- 左侧历史记录面板 -->
+      <aside class="history-panel">
+        <div class="history-header">
+          <input type="text" id="sessionSearch" placeholder="搜索会话..." />
+          <button id="newSessionBtn" title="新建会话">+</button>
         </div>
-        <div class="status-pill" id="statusText">连接中…</div>
-      </header>
+        <div id="sessionList" class="session-list"></div>
+      </aside>
 
-      <section class="chat-toolbar">
-        <label class="toolbar-field">
-          <span>Thread</span>
-          <input id="threadId" value="demo" />
-        </label>
-        <div class="toolbar-field grow">
-          <span>猫猫成员</span>
-          <div id="cats" class="cats"></div>
-        </div>
-      </section>
+      <!-- 右侧主聊天区域 -->
+      <div class="chat-main">
+        <header class="chat-header">
+          <div>
+            <h1>Cat Cafe Chat</h1>
+            <p>多猫协作 · Web 聊天界面</p>
+          </div>
+          <div class="status-pill" id="statusText">连接中…</div>
+        </header>
 
-      <section id="log" class="chat-log"></section>
+        <section class="chat-toolbar">
+          <label class="toolbar-field">
+            <span>Thread</span>
+            <input id="threadId" value="demo" />
+          </label>
+          <div class="toolbar-field grow">
+            <span>猫猫成员</span>
+            <div id="cats" class="cats"></div>
+          </div>
+        </section>
 
-      <section class="chat-composer">
-        <textarea id="prompt" rows="3" placeholder="输入你的消息，点击发送后由选中的猫猫协作处理..."></textarea>
-        <div class="composer-actions">
-          <button id="clearBtn" class="ghost">清空</button>
-          <button id="runBtn">发送</button>
-        </div>
-      </section>
+        <section id="log" class="chat-log"></section>
+
+        <section class="chat-composer">
+          <textarea id="prompt" rows="3" placeholder="输入你的消息，点击发送后由选中的猫猫协作处理..."></textarea>
+          <div class="composer-actions">
+            <button id="clearBtn" class="ghost">清空</button>
+            <button id="runBtn">发送</button>
+          </div>
+        </section>
+      </div>
     </main>
 
+    <script src="/session-manager.js"></script>
+    <script src="/history-panel.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
