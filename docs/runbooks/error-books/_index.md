@@ -22,6 +22,10 @@
 | DEV-45 | 跳过阶段 0 直接写 IR | 通用/流程 | 🟢 | flow-design.md |
 | DEV-46 | 打包评审 + 评审缺背景 | 通用/流程 | 🟢 | flow-brainstorm.md |
 | DEV-47 | 批量/seed 幂等设计未考虑"部分成功"中间状态 | 通用/流程 | 🟢 | flow-code-habit.md |
+| DEV-56 | E2E 测试只检查关键词，不检查内容质量 | 通用/测试 | 🟡×1 | testing-rules.md |
+| DEV-57 | E2E 测试用例设计与实际使用场景不一致 | 通用/测试 | 🟡×1 | testing-rules.md |
+| DEV-58 | E2E 测试环境状态不干净导致假绿 | 通用/测试 | 🟡×1 | testing-rules.md |
+| DEV-59 | 反思：为什么测试通过但实际使用有 bug | 通用/测试 | 🟡×1 | testing-rules.md |
 | DEV-3 | 联调问题用双终端来回排查 | 通用/工具 | 🟢 | tool-rules.md |
 | DEV-8 | Write 工具调用反复失败 | 通用/工具 | 🔴×5 | tool-rules.md |
 | DEV-12 | 外部 CLI 跳过环境探针+串行试错 | 通用/工具 | 🟡×2 | tool-rules.md |
