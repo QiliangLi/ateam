@@ -25,7 +25,7 @@ function formatTime(ts = Date.now()) {
   });
 }
 
-function appendMessage({ text, label, direction = 'left', kind = 'agent' }) {
+function appendMessage({ text, label, direction = 'left', kind = 'agent', save = true }) {
   const row = document.createElement('article');
   row.className = `message-row ${direction === 'right' ? 'right' : ''} ${kind === 'system' ? 'system' : ''}`.trim();
 
@@ -54,8 +54,8 @@ function appendMessage({ text, label, direction = 'left', kind = 'agent' }) {
   logEl.appendChild(row);
   logEl.scrollTop = logEl.scrollHeight;
 
-  // 保存消息到当前会话（非系统消息）
-  if (kind !== 'system' && window.SessionManager && currentSessionId) {
+  // 保存消息到当前会话（非系统消息，且 save=true）
+  if (save && kind !== 'system' && window.SessionManager && currentSessionId) {
     const role = direction === 'right' ? 'user' : label;
     window.SessionManager.addMessage(currentSessionId, role, text);
   }
@@ -453,7 +453,8 @@ function loadSessionMessages(session) {
       text: msg.content,
       label: isUser ? 'You' : msg.role,
       direction: isUser ? 'right' : 'left',
-      kind: isUser ? 'user' : 'agent'
+      kind: isUser ? 'user' : 'agent',
+      save: false  // 加载历史消息时不重复保存
     });
   });
 }
