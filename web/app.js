@@ -71,9 +71,10 @@ function ensureMessage(catId) {
       text: `${catId} 正在思考...`,
       label,
       direction: 'left',
-      kind: 'agent'
+      kind: 'agent',
+      save: false  // 占位符不保存到历史
     });
-    activeMessages.set(catId, { row, content, isThinking: true, fullText: '' });
+    activeMessages.set(catId, { row, content, isThinking: true, fullText: '', saved: false });
   }
   return activeMessages.get(catId);
 }
@@ -121,6 +122,15 @@ function updateStatus(catId, status, detail) {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+// 过滤消息中的错误内容
+function filterMessage(text) {
+  // 过滤掉错误的 @ 路径
+  let filtered = text.replace(/@\.sessions\/[^\s]+/g, '');
+  // 过滤掉多余的空行
+  filtered = filtered.replace(/\n{3,}/g, '\n\n').trim();
+  return filtered;
+}
+
 // agent 完成后重置，下次输出创建新消息
 function resetMessage(catId) {
   const entry = activeMessages.get(catId);
@@ -129,12 +139,20 @@ function resetMessage(catId) {
     entry.content.style.color = '';
     entry.content.style.fontStyle = '';
 
-    // 保存完整消息到当前会话
-    if (entry.fullText && entry.fullText.trim() && window.SessionManager && currentSessionId) {
-      window.SessionManager.addMessage(currentSessionId, catId, entry.fullText.trim());
-      // 更新会话列表
-      if (typeof renderSessionList === 'function') {
-        renderSessionList();
+    // 保存完整消息到当前会话（仅当有新内容且未保存过）
+    if (entry.fullText && entry.fullText.trim() && !entry.saved && window.SessionManager && currentSessionId) {
+      // 过滤掉占位符文本和错误内容
+      let text = entry.fullText.trim();
+      if (!text.endsWith('正在思考...')) {
+        text = filterMessage(text);
+        if (text) {
+          window.SessionManager.addMessage(currentSessionId, catId, text);
+          entry.saved = true;  // 标记已保存，防止重复
+          // 更新会话列表
+          if (typeof renderSessionList === 'function') {
+            renderSessionList();
+          }
+        }
       }
     }
   }
