@@ -316,11 +316,21 @@ function buildIdentityBlock(config, catId) {
 async function routeSerial(worklist, options) {
   registerWorklist(options.threadId, worklist);
 
+  // 发送状态更新的辅助函数
+  const sendStatus = (catId, status, detail = '') => {
+    if (typeof options.onStatus === 'function') {
+      options.onStatus({ type: 'status', catId, status, detail, ts: Date.now() });
+    }
+  };
+
   try {
     for (let i = 0; i < worklist.length; i++) {
       const catId = worklist[i];
       const config = getCatConfig(catId);
       if (!config) continue;
+
+      // 发送状态：开始准备
+      sendStatus(catId, 'preparing', '正在准备 prompt...');
 
       const shouldInject = config.cli !== 'claude' && options.apiUrl;
       const injected = shouldInject
@@ -331,7 +341,8 @@ async function routeSerial(worklist, options) {
           })
         : '';
 
-      // 获取对话历史并格式化
+      // 发送状态：获取上下文
+      sendStatus(catId, 'fetching_context', '正在获取对话历史...');
       const contextMessages = await fetchThreadContext(options);
       const contextBlock = formatThreadContext(contextMessages, catId);
 
@@ -340,6 +351,9 @@ async function routeSerial(worklist, options) {
 
       const mentionGuide = buildA2AMentionInstructions(catId);
       const fullPrompt = [identityBlock, mentionGuide, contextBlock, injected, options.prompt].filter(Boolean).join('\n\n');
+
+      // 发送状态：开始执行
+      sendStatus(catId, 'invoking', `正在调用 ${config.cli} CLI...`);
       const responseText = await invokeCat(catId, fullPrompt, options);
       markExecuted(options.threadId, catId);
       const { cleanText, messages } = extractCallbackMessages(responseText);

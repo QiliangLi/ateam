@@ -86,8 +86,37 @@ function appendChunk(catId, text) {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+// 更新 agent 状态（实时显示后端在做什么）
+function updateStatus(catId, status, detail) {
+  const entry = ensureMessage(catId);
+  if (!entry.isThinking) return; // 已经开始输出内容了，不再更新状态
+
+  // 状态文本映射
+  const statusTexts = {
+    'preparing': '📝 准备中',
+    'fetching_context': '📚 获取对话历史',
+    'invoking': '🤔 正在思考...'
+  };
+
+  const statusText = statusTexts[status] || `⏳ ${status}`;
+  const fullText = detail ? `${statusText}\n${detail}` : statusText;
+
+  entry.content.textContent = fullText;
+  entry.content.style.color = '#888';
+  entry.content.style.fontStyle = 'italic';
+
+  // 滚动到底部
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
 // agent 完成后重置，下次输出创建新消息
 function resetMessage(catId) {
+  const entry = activeMessages.get(catId);
+  if (entry) {
+    // 恢复正常样式
+    entry.content.style.color = '';
+    entry.content.style.fontStyle = '';
+  }
   activeMessages.delete(catId);
 }
 
@@ -137,6 +166,13 @@ function connectStream(threadId) {
   };
   eventSource.onmessage = (event) => {
     const payload = JSON.parse(event.data);
+
+    if (payload.type === 'status') {
+      // 状态更新：更新 agent 的思考占位符
+      updateStatus(payload.catId, payload.status, payload.detail);
+      return;
+    }
+
     if (payload.type === 'cli') {
       // 流式输出：追加到 agent 的消息中
       appendChunk(payload.catId, payload.text);

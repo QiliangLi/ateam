@@ -102,6 +102,10 @@ async function handleRun(payload) {
         if (event.type === 'cli') {
           pushEvent(threadId, { type: 'cli', catId: event.catId, text: event.text });
         }
+      },
+      onStatus: (event) => {
+        // 发送状态更新到前端
+        pushEvent(threadId, { type: 'status', catId: event.catId, status: event.status, detail: event.detail, ts: event.ts });
       }
     });
     pushEvent(threadId, { type: 'system', message: '执行完成。' });
