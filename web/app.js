@@ -88,7 +88,9 @@ function appendChunk(catId, text) {
 
 // 更新 agent 状态（实时显示后端在做什么）
 function updateStatus(catId, status, detail) {
-  const entry = ensureMessage(catId);
+  // 获取已有的消息元素（前端已创建占位符）
+  const entry = activeMessages.get(catId);
+  if (!entry) return; // 没有 agent 的消息元素，跳过
   if (!entry.isThinking) return; // 已经开始输出内容了，不再更新状态
 
   // 状态文本映射
