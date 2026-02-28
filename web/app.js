@@ -144,9 +144,18 @@ function connectStream(threadId) {
     }
 
     if (payload.type === 'message') {
-      // 显式消息：追加内容，然后重置
-      appendChunk(payload.catId, payload.content);
-      resetMessage(payload.catId);
+      // 显式消息：只重置状态，不追加内容（cli 已经显示了完整内容）
+      // 这里的 message 是 agent 通过 CAT_CAFE_POST_MESSAGE 发送的
+      // 如果 cli 已经显示了相同内容，则跳过
+      const entry = activeMessages.get(payload.catId);
+      if (entry && entry.fullText && entry.fullText.includes(payload.content)) {
+        // 内容已经通过 cli 显示，只重置状态
+        resetMessage(payload.catId);
+      } else {
+        // 新内容，追加并重置
+        appendChunk(payload.catId, payload.content);
+        resetMessage(payload.catId);
+      }
       return;
     }
 
