@@ -11,12 +11,16 @@ const CALLBACK_SPLIT_REGEX = /CAT\s*\n\s*_CAFE_POST_MESSAGE/g;
 function buildA2AMentionInstructions(currentCatId) {
   const allCats = ['opus', 'codex', 'gemini'];
   const otherCats = allCats.filter(id => id !== currentCatId);
-  return `可用艾特：${otherCats.map(id => '@' + id).join('，')}。
+  return `## 艾特规则（非常重要）
 
-## 艾特规则（非常重要）
+可用艾特：${otherCats.map(id => '@' + id).join('，')}
+
+核心原则：只有真正需要对方协作或回复时才 @，不要为了打招呼或礼貌而 @。
+
+规则：
 1. 禁止 @ 自己（你现在是 ${currentCatId}）
 2. 每个 agent 只需要 @ 一次，不要重复 @
-3. 仅在真正需要对方回复时才 @，如果只是提到对方名字不需要 @
+3. 只是提到对方名字时不要 @，只有需要对方行动时才 @
 4. 把 @ 放在新的一行行首，格式如：
    @codex 请你回答这个问题
 5. 不要输出任何技术关键词：CAT_CAFE_POST_MESSAGE、_MESSAGE、CAT_CAFE_POST、threadId 等
