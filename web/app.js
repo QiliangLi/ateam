@@ -105,7 +105,15 @@ function ensureMessage(catId) {
       kind: 'agent',
       save: false  // 占位符不保存到历史
     });
-    activeMessages.set(catId, { row, content, isThinking: true, fullText: '', saved: false });
+    // 记录创建时的 sessionId，防止切换会话后保存到错误的会话
+    activeMessages.set(catId, {
+      row,
+      content,
+      isThinking: true,
+      fullText: '',
+      saved: false,
+      sessionId: currentSessionId  // 记录属于哪个会话
+    });
   }
   return activeMessages.get(catId);
 }
@@ -170,15 +178,17 @@ function resetMessage(catId) {
     entry.content.style.color = '';
     entry.content.style.fontStyle = '';
 
-    // 保存完整消息到当前会话（仅当有新内容且未保存过）
-    if (entry.fullText && entry.fullText.trim() && !entry.saved && window.SessionManager && currentSessionId) {
+    // 保存完整消息到创建时的会话（仅当有新内容且未保存过）
+    // 使用 entry.sessionId 而不是 currentSessionId，防止切换会话后保存到错误的会话
+    const targetSessionId = entry.sessionId;
+    if (entry.fullText && entry.fullText.trim() && !entry.saved && window.SessionManager && targetSessionId) {
       // 过滤掉占位符文本和错误内容
       let text = entry.fullText.trim();
       if (!text.endsWith('正在思考...')) {
         text = filterMessage(text);
         if (text) {
           entry.saved = true;  // 先标记，防止 race condition
-          window.SessionManager.addMessage(currentSessionId, catId, text);
+          window.SessionManager.addMessage(targetSessionId, catId, text);
           // 更新会话列表
           if (typeof renderSessionList === 'function') {
             renderSessionList();
@@ -191,7 +201,23 @@ function resetMessage(catId) {
 }
 
 // 清空所有活动消息（用于新一轮对话）
+// 先保存未保存的消息，再清空
 function clearActiveMessages() {
+  // 兜底保存：遍历所有活动消息，保存未保存的内容
+  for (const [catId, entry] of activeMessages) {
+    // 使用 entry.sessionId 而不是 currentSessionId，防止保存到错误的会话
+    const targetSessionId = entry.sessionId;
+    if (entry.fullText && entry.fullText.trim() && !entry.saved && window.SessionManager && targetSessionId) {
+      let text = entry.fullText.trim();
+      if (!text.endsWith('正在思考...')) {
+        text = filterMessage(text);
+        if (text) {
+          entry.saved = true;
+          window.SessionManager.addMessage(targetSessionId, catId, text);
+        }
+      }
+    }
+  }
   activeMessages.clear();
 }
 
@@ -250,15 +276,21 @@ function connectStream(threadId) {
     }
 
     if (payload.type === 'message') {
-      // 显式消息：只重置状态，不追加内容（cli 已经显示了完整内容）
-      // 这里的 message 是 agent 通过 CAT_CAFE_POST_MESSAGE 发送的
-      // 如果 cli 已经显示了相同内容，则跳过
+      // 显式消息：callback message 是权威来源，替换式同步
+      // CLI 流只用于实时预览，callback message 触发最终保存
       const entry = activeMessages.get(payload.catId);
-      if (entry && entry.fullText && entry.fullText.includes(payload.content)) {
-        // 内容已经通过 cli 显示，只重置状态
+      if (entry) {
+        // 使用 callback 的内容替换现有内容（权威来源）
+        entry.fullText = payload.content;
+        entry.content.textContent = payload.content;
+        entry.isThinking = false;
+        // 恢复正常样式
+        entry.content.style.color = '';
+        entry.content.style.fontStyle = '';
+        // 保存并清理
         resetMessage(payload.catId);
       } else {
-        // 新内容，追加并重置
+        // 没有活动消息（可能是遗漏的 callback），创建新消息
         appendChunk(payload.catId, payload.content);
         resetMessage(payload.catId);
       }

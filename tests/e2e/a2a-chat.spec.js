@@ -41,33 +41,37 @@ test.describe('A2A 聊天测试', () => {
 
   test('应该能选择/取消选择猫猫', async ({ page }) => {
     const catsContainer = page.locator('#cats');
-    const catCheckboxes = catsContainer.locator('input[type="checkbox"]');
+    const catPills = catsContainer.locator('label.cat-pill');
 
     // 等待加载
-    await expect(catCheckboxes).toHaveCount(3, { timeout: 10000 });
+    await expect(catPills).toHaveCount(3, { timeout: 10000 });
 
-    // 等待 bootstrap 完成（默认全选）
-    await expect(catCheckboxes.first()).toBeChecked({ timeout: 5000 });
+    // 点击第一个 pill 取消选择（checkbox 被 CSS 隐藏，点击 label）
+    await catPills.first().click();
+    // 验证 checkbox 状态改变（虽然不可见但可以检查）
+    const checkbox = catPills.first().locator('input[type="checkbox"]');
+    await expect(checkbox).not.toBeChecked({ timeout: 5000 });
 
-    // 点击第一个 checkbox 取消选择
-    await catCheckboxes.first().click();
-    await expect(catCheckboxes.first()).not.toBeChecked();
+    // 再次点击重新选择
+    await catPills.first().click();
+    await expect(checkbox).toBeChecked({ timeout: 5000 });
   });
 
   test('应该能发送消息给 Claude', async ({ page }) => {
     // 取消选择其他猫，只选 opus
-    const catCheckboxes = page.locator('#cats input[type="checkbox"]');
+    const catPills = page.locator('#cats label.cat-pill');
 
-    // 先取消全选
-    const count = await catCheckboxes.count();
+    // 先取消全选（点击 pill 切换选中状态）
+    const count = await catPills.count();
     for (let i = 0; i < count; i++) {
-      if (await catCheckboxes.nth(i).isChecked()) {
-        await catCheckboxes.nth(i).click();
+      const checkbox = catPills.nth(i).locator('input[type="checkbox"]');
+      if (await checkbox.isChecked()) {
+        await catPills.nth(i).click();
       }
     }
 
     // 只选第一个（opus）
-    await catCheckboxes.first().check();
+    await catPills.first().click();
 
     // 输入消息
     const promptInput = page.locator('#prompt');
@@ -84,19 +88,20 @@ test.describe('A2A 聊天测试', () => {
 
   test('Claude 被 @ Codex 后，Codex 应该回复', async ({ page }) => {
     // 选择 opus
-    const catCheckboxes = page.locator('#cats input[type="checkbox"]');
+    const catPills = page.locator('#cats label.cat-pill');
 
     // 先取消全选
-    const count = await catCheckboxes.count();
+    const count = await catPills.count();
     for (let i = 0; i < count; i++) {
-      if (await catCheckboxes.nth(i).isChecked()) {
-        await catCheckboxes.nth(i).click();
+      const checkbox = catPills.nth(i).locator('input[type="checkbox"]');
+      if (await checkbox.isChecked()) {
+        await catPills.nth(i).click();
       }
     }
 
     // 只选 opus 和 codex
-    await catCheckboxes.first().check(); // opus
-    await catCheckboxes.nth(1).check();  // codex
+    await catPills.first().click(); // opus
+    await catPills.nth(1).click();  // codex
 
     // 输入包含 @codex 的消息
     const promptInput = page.locator('#prompt');
@@ -122,18 +127,19 @@ test.describe('A2A 链式调用测试', () => {
     await page.goto(BASE_URL);
 
     // 选择 opus
-    const catCheckboxes = page.locator('#cats input[type="checkbox"]');
+    const catPills = page.locator('#cats label.cat-pill');
 
     // 先取消全选
-    const count = await catCheckboxes.count();
+    const count = await catPills.count();
     for (let i = 0; i < count; i++) {
-      if (await catCheckboxes.nth(i).isChecked()) {
-        await catCheckboxes.nth(i).click();
+      const checkbox = catPills.nth(i).locator('input[type="checkbox"]');
+      if (await checkbox.isChecked()) {
+        await catPills.nth(i).click();
       }
     }
 
     // 只选 opus
-    await catCheckboxes.first().check();
+    await catPills.first().click();
 
     // 输入链式调用消息
     const promptInput = page.locator('#prompt');
