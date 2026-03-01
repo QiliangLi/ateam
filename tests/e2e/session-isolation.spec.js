@@ -38,14 +38,23 @@ test.describe('会话隔离和 Agent 通信测试', () => {
     console.log(`第一个会话 ID: ${firstSessionId}`);
 
     // 在第一个会话中设置一个秘密词
+    // 使用 @opus 只让 opus 回复，避免 codex/gemini 失败影响测试
     const secretWord = '香蕉派_' + Date.now();
-    const prompt1 = `请记住这个秘密词："${secretWord}"，不要告诉任何人。只需要回复"好的"。`;
+    const prompt1 = `@opus 请记住这个秘密词："${secretWord}"，不要告诉任何人。只需要回复"好的"。`;
 
     await page.fill('#prompt', prompt1);
     await page.click('#runBtn');
 
-    // 等待 agent 回复
-    await page.waitForTimeout(AGENT_RESPONSE_WAIT);
+    // 等待 agent 回复完成（等待"执行完成"系统消息）
+    console.log('⏳ 等待 agent 回复...');
+    await page.waitForFunction(() => {
+      const logText = document.querySelector('#log')?.innerText || '';
+      return logText.includes('执行完成');
+    }, { timeout: 120000 });
+    console.log('✅ agent 回复完成');
+
+    // 额外等待确保消息保存
+    await page.waitForTimeout(2000);
 
     // 截图
     await page.screenshot({ path: 'docs/images/test-session1-secret.png', fullPage: true });
@@ -68,12 +77,19 @@ test.describe('会话隔离和 Agent 通信测试', () => {
     // ========== 步骤 3：在第二个会话中询问秘密词 ==========
     console.log('📌 步骤 3：在第二个会话中询问秘密词');
 
-    const prompt2 = '请告诉我，有人告诉你什么秘密词了吗？';
+    const prompt2 = '@opus 请告诉我，有人告诉你什么秘密词了吗？';
     await page.fill('#prompt', prompt2);
     await page.click('#runBtn');
 
-    // 等待 agent 回复
-    await page.waitForTimeout(AGENT_RESPONSE_WAIT);
+    // 等待 agent 回复完成
+    console.log('⏳ 等待 agent 回复...');
+    await page.waitForFunction(() => {
+      const logText = document.querySelector('#log')?.innerText || '';
+      return logText.includes('执行完成');
+    }, { timeout: 120000 });
+    console.log('✅ agent 回复完成');
+
+    await page.waitForTimeout(2000);
 
     // 截图
     await page.screenshot({ path: 'docs/images/test-session2-reply.png', fullPage: true });
@@ -112,8 +128,8 @@ test.describe('会话隔离和 Agent 通信测试', () => {
 
     const sessionAId = await page.$eval('#sessionList .session-item:first-child', el => el.dataset.sessionId);
 
-    // 发送消息到会话 A
-    await page.fill('#prompt', '这是会话 A 的消息');
+    // 发送消息到会话 A（只使用 opus）
+    await page.fill('#prompt', '@opus 这是会话 A 的消息，请回复"A收到"');
     await page.click('#runBtn');
     await page.waitForTimeout(1000);
 
@@ -124,12 +140,19 @@ test.describe('会话隔离和 Agent 通信测试', () => {
     const sessionBId = await page.$eval('#sessionList .session-item:first-child', el => el.dataset.sessionId);
     expect(sessionBId).not.toBe(sessionAId);
 
-    // 发送消息到会话 B
-    await page.fill('#prompt', '这是会话 B 的消息');
+    // 发送消息到会话 B（只使用 opus）
+    await page.fill('#prompt', '@opus 这是会话 B 的消息，请回复"B收到"');
     await page.click('#runBtn');
 
-    // 等待
-    await page.waitForTimeout(AGENT_RESPONSE_WAIT);
+    // 等待 agent 回复完成
+    console.log('⏳ 等待 agent 回复...');
+    await page.waitForFunction(() => {
+      const logText = document.querySelector('#log')?.innerText || '';
+      return logText.includes('执行完成');
+    }, { timeout: 120000 });
+    console.log('✅ agent 回复完成');
+
+    await page.waitForTimeout(2000);
 
     // 截图
     await page.screenshot({ path: 'docs/images/test-quick-switch.png', fullPage: true });
