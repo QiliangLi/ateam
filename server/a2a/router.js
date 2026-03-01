@@ -300,7 +300,10 @@ function formatThreadContext(messages, currentCatId) {
   if (!messages || messages.length === 0) return '';
   const lines = ['## 对话历史（其他 agent 之前发送的消息）'];
   for (const msg of messages) {
-    lines.push(`**${msg.role}**: ${msg.content}`);
+    // 使用 cat 配置的 name 和 alias 而不是 catId
+    const config = getCatConfig(msg.role);
+    const displayName = config ? `${config.name}（${config.alias}）` : msg.role;
+    lines.push(`**${displayName}**: ${msg.content}`);
   }
   lines.push('');
   lines.push('注意：以上是其他 agent 发送的消息，请根据内容回复。保持你自己的身份，不要混淆。');
