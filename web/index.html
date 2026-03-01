@@ -31,10 +31,8 @@
         </header>
 
         <section class="chat-toolbar">
-          <label class="toolbar-field">
-            <span>Thread</span>
-            <input id="threadId" value="demo" />
-          </label>
+          <!-- Thread ID 现在自动从 sessionId 获取，不再需要手动输入 -->
+          <input type="hidden" id="threadId" value="" />
           <div class="toolbar-field grow">
             <span>猫猫成员</span>
             <div id="cats" class="cats"></div>

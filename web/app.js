@@ -290,9 +290,15 @@ function connectStream(threadId) {
         // 保存并清理
         resetMessage(payload.catId);
       } else {
-        // 没有活动消息（可能是遗漏的 callback），创建新消息
-        appendChunk(payload.catId, payload.content);
-        resetMessage(payload.catId);
+        // 没有活动消息（可能是用户切换了会话或刷新了页面）
+        // 只显示在 UI 上，不保存到历史（因为没有 sessionId 信息）
+        appendMessage({
+          text: payload.content,
+          label: payload.catId,
+          direction: 'left',
+          kind: 'agent',
+          save: false  // 不保存，因为没有 sessionId 信息
+        });
       }
       return;
     }
@@ -319,7 +325,7 @@ async function bootstrap() {
   availableCats = data.cats || [];
   selectedCats = new Set(availableCats);
   renderCats();
-  connectStream(threadInput.value || 'default');
+  // SSE 连接移到 initSessionManager 中，使用 currentSessionId 作为 threadId
 }
 
 // 从 prompt 中提取 @ 提及的 agent
@@ -338,8 +344,6 @@ function extractMentionedCats(prompt) {
 }
 
 runBtn.addEventListener('click', async () => {
-  const threadId = threadInput.value.trim() || 'default';
-
   // 如果没有当前会话，提示用户
   if (!currentSessionId) {
     appendMessage({ text: '请先创建或选择一个会话。', label: 'System', kind: 'system' });
@@ -349,7 +353,9 @@ runBtn.addEventListener('click', async () => {
   // 清空上一轮的活动消息
   clearActiveMessages();
 
-  connectStream(threadId);
+  // 每次发送消息时确保连接到正确的 thread
+  // 使用 currentSessionId 作为 threadId，确保每个会话有独立的消息路由
+  connectStream(currentSessionId);
 
   const prompt = promptInput.value.trim();
   if (!prompt) {
@@ -378,20 +384,17 @@ runBtn.addEventListener('click', async () => {
   // 立即为要执行的 agent 创建 "正在思考..." 占位符
   cats.forEach(catId => ensureMessage(catId));
 
+  // 使用 currentSessionId 作为 threadId
   await fetch('/api/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ threadId, cats, prompt })
+    body: JSON.stringify({ threadId: currentSessionId, cats, prompt })
   });
 });
 
 clearBtn.addEventListener('click', () => {
   logEl.innerHTML = '';
   clearActiveMessages();
-});
-
-threadInput.addEventListener('change', () => {
-  connectStream(threadInput.value.trim() || 'default');
 });
 
 // ========== 会话管理 ==========
@@ -418,6 +421,8 @@ async function initSessionManager() {
     const session = await window.SessionManager.getSession(currentSessionId);
     if (session) {
       loadSessionMessages(session);
+      // 连接到当前会话的 thread
+      connectStream(currentSessionId);
     }
   }
 
@@ -432,6 +437,8 @@ async function initSessionManager() {
       if (session) {
         loadSessionMessages(session);
         await renderSessionList();
+        // 切换会话时重新连接到新的 thread
+        connectStream(sessionId);
       }
       updateInputState();
     },
@@ -446,9 +453,16 @@ async function initSessionManager() {
         // 如果删除的是当前会话，清空消息区域
         if (!currentSessionId) {
           logEl.innerHTML = '';
+          // 没有会话时断开 SSE 连接
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
         } else {
           const session = await window.SessionManager.getSession(currentSessionId);
           if (session) loadSessionMessages(session);
+          // 连接到新的当前会话的 thread
+          connectStream(currentSessionId);
         }
         updateInputState();
       }
@@ -473,6 +487,8 @@ async function initSessionManager() {
 
     logEl.innerHTML = '';
     clearActiveMessages();
+    // 新建会话时连接到新的 thread
+    connectStream(currentSessionId);
     await renderSessionList();
     updateInputState();
     promptInput.focus();
