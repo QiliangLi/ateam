@@ -572,6 +572,25 @@ input:focus, textarea:focus {
   word-break: break-word;
 }
 
+/* 状态指示器（显示 CLI 执行状态） */
+.status-indicator {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 .message-row.right .bubble-content {
   color: var(--user-text);
 }

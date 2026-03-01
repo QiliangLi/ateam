@@ -99,16 +99,24 @@ function ensureMessage(catId) {
   if (!activeMessages.has(catId)) {
     const label = catId;
     const { row, content } = appendMessage({
-      text: `${catId} 正在思考...`,
+      text: '',  // 初始为空，由状态指示器显示
       label,
       direction: 'left',
       kind: 'agent',
       save: false  // 占位符不保存到历史
     });
+
+    // 创建状态指示器（显示在消息内容之前）
+    const statusIndicator = document.createElement('div');
+    statusIndicator.className = 'status-indicator';
+    statusIndicator.textContent = '⏳ 初始化...';
+    content.parentNode.insertBefore(statusIndicator, content);
+
     // 记录创建时的 sessionId，防止切换会话后保存到错误的会话
     activeMessages.set(catId, {
       row,
       content,
+      statusIndicator,  // 新增：状态指示器
       isThinking: true,
       fullText: '',
       saved: false,
@@ -124,9 +132,14 @@ function appendChunk(catId, text) {
   entry.fullText += text;
 
   if (entry.isThinking) {
-    // 移除占位符，显示实际内容
+    // 第一次收到输出，移除"正在思考"占位符，开始显示实际内容
     entry.content.textContent = text;
     entry.isThinking = false;
+
+    // 更新状态指示器：正在生成回复
+    if (entry.statusIndicator) {
+      entry.statusIndicator.textContent = '💬 正在生成回复...';
+    }
   } else {
     // 追加到已有内容
     entry.content.textContent = entry.fullText;
@@ -141,21 +154,22 @@ function updateStatus(catId, status, detail) {
   // 获取已有的消息元素（前端已创建占位符）
   const entry = activeMessages.get(catId);
   if (!entry) return; // 没有 agent 的消息元素，跳过
-  if (!entry.isThinking) return; // 已经开始输出内容了，不再更新状态
 
   // 状态文本映射
   const statusTexts = {
-    'preparing': '📝 准备中',
-    'fetching_context': '📚 获取对话历史',
-    'invoking': '🤔 正在思考...'
+    'preparing': '📝 准备 Prompt...',
+    'fetching_context': '📚 获取对话历史...',
+    'invoking': '🤖 调用 CLI...'
   };
 
   const statusText = statusTexts[status] || `⏳ ${status}`;
   const fullText = detail ? `${statusText}\n${detail}` : statusText;
 
-  entry.content.textContent = fullText;
-  entry.content.style.color = '#888';
-  entry.content.style.fontStyle = 'italic';
+  // 更新状态指示器（而不是消息内容）
+  if (entry.statusIndicator) {
+    entry.statusIndicator.textContent = fullText;
+    entry.statusIndicator.style.display = 'block';
+  }
 
   // 滚动到底部
   logEl.scrollTop = logEl.scrollHeight;
@@ -177,6 +191,11 @@ function resetMessage(catId) {
     // 恢复正常样式
     entry.content.style.color = '';
     entry.content.style.fontStyle = '';
+
+    // 隐藏状态指示器（CLI 执行完成）
+    if (entry.statusIndicator) {
+      entry.statusIndicator.style.display = 'none';
+    }
 
     // 保存完整消息到创建时的会话（仅当有新内容且未保存过）
     // 使用 entry.sessionId 而不是 currentSessionId，防止切换会话后保存到错误的会话
