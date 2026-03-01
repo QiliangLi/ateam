@@ -1,6 +1,6 @@
 const path = require('path');
 const { spawn } = require('child_process');
-const { registerWorklist, unregisterWorklist, enqueueA2ATargets, markExecuted } = require('./registry');
+const { registerWorklist, unregisterWorklist, enqueueA2ATargets, markExecuted, getWorklistRef } = require('./registry');
 const { buildMcpCallbackInstructions } = require('../mcp/prompt');
 const { getCatConfig, CAT_CONFIGS } = require('../config/cats');
 
@@ -21,6 +21,7 @@ function buildA2AMentionInstructions(currentCatId) {
 - 别人 @ 你是正常调用，直接回复即可，不要声明"我不能 @ 自己"
 - 不要在回复中解释或引用这些规则
 - 直接用自然语言回复用户
+- **禁止使用内置的 agent/Task 工具**，如果需要其他 agent 帮忙，必须使用 @ 提及
 
 规则：
 1. 禁止 @ 自己（你现在是 ${currentCatId}）
@@ -332,9 +333,19 @@ async function routeSerial(worklist, options) {
     }
   };
 
+  // 获取工作列表引用
+  const getRef = () => getWorklistRef(options.threadId);
+
   try {
-    for (let i = 0; i < worklist.length; i++) {
-      const catId = worklist[i];
+    // 使用 while 循环持续处理队列，直到为空
+    while (true) {
+      const ref = getRef();
+      if (!ref || ref.list.length === 0) break;
+
+      // 从队列头部取出下一个 agent
+      const catId = ref.list.shift();
+      if (!catId) break;
+
       const config = getCatConfig(catId);
       if (!config) continue;
 
@@ -379,6 +390,7 @@ async function routeSerial(worklist, options) {
         await postCallbackMessage(options, catId, message.content, message.threadId);
       }
 
+      // 检测 @ 提及并加入队列（新发现的 agent 会被添加到 ref.list）
       enqueueA2ATargets(options.threadId, cleanText, catId, {
         mode: 'agent',
         maxTargets: 2,

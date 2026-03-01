@@ -60,10 +60,15 @@ function getWorklist(threadId) {
   return threadWorklistRegistry.get(threadId)?.list || null;
 }
 
+function getWorklistRef(threadId) {
+  return threadWorklistRegistry.get(threadId);
+}
+
 module.exports = {
   registerWorklist,
   unregisterWorklist,
   enqueueA2ATargets,
   getWorklist,
+  getWorklistRef,
   markExecuted
 };
