@@ -1,14 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Paperclip } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { MentionTag } from './ui/MentionTag';
 
 interface ComposerProps {
     onSend: (message: string) => void;
     agents: { id: string; display: string }[];
 }
 
+interface Mention {
+    id: string;
+    display: string;
+}
+
 export function Composer({ onSend, agents }: ComposerProps) {
     const [value, setValue] = useState('');
+    const [mentions, setMentions] = useState<Mention[]>([]);
     const [showPopover, setShowPopover] = useState(false);
     const [popoverFilter, setPopoverFilter] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
@@ -40,20 +47,33 @@ export function Composer({ onSend, agents }: ComposerProps) {
     };
 
     const insertMention = (agent: { id: string; display: string }) => {
+        // Check if this agent is already mentioned
+        if (mentions.some(m => m.id === agent.id)) {
+            setShowPopover(false);
+            return;
+        }
+
+        // Add to mentions array
+        setMentions([...mentions, agent]);
+
+        // Remove the @query from textarea
         const cursorPos = textareaRef.current?.selectionStart || value.length;
         const textBeforeCursor = value.slice(0, cursorPos);
         const atIdx = textBeforeCursor.lastIndexOf('@');
         const before = value.slice(0, atIdx);
         const after = value.slice(cursorPos);
-        const newValue = `${before}@${agent.display} ${after}`;
+        const newValue = `${before}${after}`;
         setValue(newValue);
         setShowPopover(false);
 
         setTimeout(() => {
-            const newPos = before.length + agent.display.length + 2;
             textareaRef.current?.focus();
-            textareaRef.current?.setSelectionRange(newPos, newPos);
+            textareaRef.current?.setSelectionRange(before.length, before.length);
         }, 0);
+    };
+
+    const handleDeleteMention = (mentionId: string) => {
+        setMentions(mentions.filter(m => m.id !== mentionId));
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -86,9 +106,16 @@ export function Composer({ onSend, agents }: ComposerProps) {
     };
 
     const handleSend = () => {
-        if (value.trim()) {
-            onSend(value);
+        // Build message with mentions
+        let message = value;
+        if (mentions.length > 0) {
+            const mentionText = mentions.map(m => `@${m.display}`).join(' ');
+            message = mentionText + (message ? ' ' + message : '');
+        }
+        if (message.trim()) {
+            onSend(message);
             setValue('');
+            setMentions([]);
         }
     };
 
@@ -121,6 +148,19 @@ export function Composer({ onSend, agents }: ComposerProps) {
                 </div>
             )}
 
+            {/* Mention Tags */}
+            {mentions.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-4 pt-3">
+                    {mentions.map(mention => (
+                        <MentionTag
+                            key={mention.id}
+                            agent={mention}
+                            onDelete={() => handleDeleteMention(mention.id)}
+                        />
+                    ))}
+                </div>
+            )}
+
             <textarea
                 ref={textareaRef}
                 value={value}
@@ -139,10 +179,10 @@ export function Composer({ onSend, agents }: ComposerProps) {
                 </button>
                 <button
                     onClick={handleSend}
-                    disabled={!value.trim()}
+                    disabled={!value.trim() && mentions.length === 0}
                     className={cn(
                         "p-1.5 rounded-lg transition-colors flex items-center justify-center",
-                        value.trim() ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-100 text-gray-400"
+                        (value.trim() || mentions.length > 0) ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-100 text-gray-400"
                     )}
                 >
                     <Send className="w-4 h-4" />

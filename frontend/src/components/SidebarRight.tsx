@@ -2,8 +2,24 @@ import React from 'react';
 import { Accordion } from './ui/Accordion';
 import { Timeline, TimelineItem } from './ui/Timeline';
 import { Settings, Info } from 'lucide-react';
+import type { AgentStat } from '../hooks/useSessionStats';
 
-export function SidebarRight({ onOpenSettings }: { onOpenSettings: () => void }) {
+interface SidebarRightProps {
+    onOpenSettings: () => void;
+    agentStats?: AgentStat[];
+    timelineItems?: TimelineItem[];
+}
+
+export function SidebarRight({
+    onOpenSettings,
+    agentStats = [],
+    timelineItems = []
+}: SidebarRightProps) {
+    // 计算总 token 数用于进度条
+    const totalTokens = agentStats.reduce((sum, stat) => sum + stat.tokens, 0);
+    const maxTokens = Math.max(totalTokens, 1000); // 避免除以零，设置最小基准
+
+    // 动态生成统计项
     const statsItems = [
         {
             title: (
@@ -14,17 +30,26 @@ export function SidebarRight({ onOpenSettings }: { onOpenSettings: () => void })
             ),
             content: (
                 <div className="space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-500">@opus</span>
-                        <span className="font-mono font-medium">1,245 tokens</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-500">@gemini</span>
-                        <span className="font-mono font-medium">850 tokens</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                        <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: '65%' }}></div>
-                    </div>
+                    {agentStats.length > 0 ? (
+                        <>
+                            {agentStats.map(stat => (
+                                <div key={stat.id} className="flex justify-between items-center text-xs">
+                                    <span className="text-gray-500">{stat.id}</span>
+                                    <span className="font-mono font-medium">
+                                        {stat.tokens.toLocaleString()} tokens
+                                    </span>
+                                </div>
+                            ))}
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                                <div
+                                    className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                                    style={{ width: `${Math.min((totalTokens / maxTokens) * 100, 100)}%` }}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="text-xs text-gray-400">暂无统计数据</div>
+                    )}
                 </div>
             )
         },
@@ -37,17 +62,12 @@ export function SidebarRight({ onOpenSettings }: { onOpenSettings: () => void })
             ),
             content: (
                 <div className="text-xs text-gray-500">
-                    Memory usage is stable. 12 previous turns loaded in active context buffer.
+                    {timelineItems.length > 0
+                        ? `已记录 ${timelineItems.length} 个会话事件`
+                        : '暂无上下文记录'}
                 </div>
             )
         }
-    ];
-
-    const timelineItems: TimelineItem[] = [
-        { id: '1', title: 'User Input', description: 'Received Markdown request', status: 'completed' },
-        { id: '2', title: '@opus router', description: 'Delegated task to UI expert', status: 'completed' },
-        { id: '3', title: '@gemini rendering', description: 'Generating React code...', status: 'active' },
-        { id: '4', title: 'Final Aggregation', status: 'pending' },
     ];
 
     return (
@@ -69,7 +89,11 @@ export function SidebarRight({ onOpenSettings }: { onOpenSettings: () => void })
             <div className="space-y-6">
                 <div>
                     <h4 className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Session Chain</h4>
-                    <Timeline items={timelineItems} />
+                    {timelineItems.length > 0 ? (
+                        <Timeline items={timelineItems} />
+                    ) : (
+                        <div className="text-xs text-gray-400 ml-6">暂无时间线记录</div>
+                    )}
                 </div>
 
                 <div>
