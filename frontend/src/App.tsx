@@ -70,9 +70,9 @@ function App() {
       </header>
 
       <main className="flex-1 overflow-hidden">
-        <Group orientation="horizontal" className="h-full">
+        <Group orientation="horizontal" style={{ height: '100%' }}>
           <Panel defaultSize={20} minSize={15} maxSize={30} className="bg-gray-50/50">
-            <div className="h-full p-4 flex flex-col">
+            <div className="h-full p-4 flex flex-col overflow-y-auto">
               <h2 className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wider">Sessions</h2>
               <div className="p-3 bg-white border rounded-lg shadow-sm cursor-pointer hover:border-blue-300 transition-colors">
                 <div className="text-sm font-medium text-gray-800">多猫协作优化会议</div>
