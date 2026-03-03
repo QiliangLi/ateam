@@ -4,6 +4,7 @@ import { ChatMessage } from './components/ChatMessage';
 import { Composer } from './components/Composer';
 import { SidebarRight } from './components/SidebarRight';
 import { SettingsModal } from './components/SettingsModal';
+import { VirtualMessageList } from './components/VirtualMessageList';
 import './index.css';
 
 const MOCK_AGENTS = [
@@ -37,10 +38,18 @@ function App() {
   const [messages, setMessages] = useState<any[]>(INITIAL_MESSAGES);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(500);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      setContainerHeight(messagesContainerRef.current.clientHeight);
+    }
+  }, []);
 
   const handleSend = (text: string) => {
     setMessages((prev) => [...prev, {
@@ -85,20 +94,26 @@ function App() {
 
           <Panel defaultSize={55} minSize={40}>
             <div className="h-full bg-white flex flex-col relative">
-              <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
-                <div className="max-w-4xl mx-auto flex flex-col gap-2">
-                  {messages.map((msg) => (
-                    <ChatMessage
-                      key={msg.id}
-                      id={msg.id}
-                      role={msg.role}
-                      content={msg.content}
-                      agentName={msg.agentName}
-                      thoughtProcess={msg.thoughtProcess}
-                      metrics={msg.metrics}
-                    />
-                  ))}
-                  <div ref={messagesEndRef} />
+              <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+                <div className="max-w-4xl mx-auto">
+                  {messages.length > 50 ? (
+                    <VirtualMessageList messages={messages} height={containerHeight} />
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {messages.map((msg) => (
+                        <ChatMessage
+                          key={msg.id}
+                          id={msg.id}
+                          role={msg.role}
+                          content={msg.content}
+                          agentName={msg.agentName}
+                          thoughtProcess={msg.thoughtProcess}
+                          metrics={msg.metrics}
+                        />
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  )}
                 </div>
               </div>
 
