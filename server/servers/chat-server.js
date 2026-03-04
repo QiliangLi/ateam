@@ -12,7 +12,7 @@ const { writeIoLog } = require('../utils/io-logger');
 const sessionStore = require('../utils/session-store');
 
 const PORT = Number(process.env.CAT_CAFE_PORT || 3200);
-const WEB_DIR = path.join(process.cwd(), 'web');
+const WEB_DIR = path.join(__dirname, '../../web');
 
 const invocationId = randomUUID();
 const callbackToken = randomUUID();
