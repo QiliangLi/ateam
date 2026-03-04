@@ -75,23 +75,30 @@ export function ChatMessage({ role, content, agentName, thoughtProcess, metrics 
     }
 
     return (
-        <div className={cn("flex w-full mb-8 gap-4", isUser && "justify-end")}>
+        <div className={cn("flex w-full mb-3 gap-3", isUser && "justify-end")}>
             {!isUser && (
-                <div className="w-8 h-8 rounded-lg bg-gray-100 border flex items-center justify-center shrink-0">
-                    <span className="text-sm">🐱</span>
+                <div
+                    className="w-7 h-7 rounded-lg bg-gray-100 border flex items-center justify-center shrink-0"
+                    style={{ fontSize: 'var(--font-ui)' }}
+                >
+                    <span className="text-xs">🐱</span>
                 </div>
             )}
 
-            <div className={cn("flex flex-col gap-2 max-w-[80%]", isUser && "items-end")}>
+            <div className={cn("flex flex-col gap-1 max-w-[85%]", isUser && "items-end")}>
                 {!isUser && agentName && (
                     <div className="text-sm font-medium text-gray-700">{agentName}</div>
                 )}
 
                 <div
                     className={cn(
-                        "p-4 rounded-2xl",
+                        "rounded-xl",
                         isUser ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border rounded-tl-sm shadow-sm"
                     )}
+                    style={{
+                        padding: `calc(var(--spacing-base) * 0.75)`,
+                        fontSize: `var(--font-message)`
+                    }}
                 >
                     {thoughtProcess && !isUser && (
                         <Collapsible title="Thought Process" className="mb-4">
@@ -130,7 +137,10 @@ export function ChatMessage({ role, content, agentName, thoughtProcess, metrics 
             </div>
 
             {isUser && (
-                <div className="w-8 h-8 rounded-lg bg-blue-100 border-blue-200 border flex items-center justify-center shrink-0">
+                <div
+                    className="w-8 h-8 rounded-lg bg-blue-100 border-blue-200 border flex items-center justify-center shrink-0"
+                    style={{ fontSize: 'var(--font-ui)' }}
+                >
                     <span className="text-sm">👤</span>
                 </div>
             )}
