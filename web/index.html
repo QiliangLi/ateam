@@ -1,58 +1,13 @@
-<!doctype html>
-<html lang="zh">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cat Cafe Chat</title>
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <main class="chat-app">
-      <!-- 左侧历史记录面板 -->
-      <aside class="history-panel">
-        <div class="history-header">
-          <input type="text" id="sessionSearch" placeholder="搜索会话..." />
-          <button id="newSessionBtn" title="新建会话">+</button>
-        </div>
-        <div id="sessionList" class="session-list"></div>
-      </aside>
-
-      <!-- 右侧主聊天区域 -->
-      <div class="chat-main">
-        <header class="chat-header">
-          <div class="header-left">
-            <button id="toggleSidebar" class="icon-btn" title="切换侧边栏">☰</button>
-            <div>
-              <h1>Cat Cafe Chat</h1>
-              <p>多猫协作 · Web 聊天界面</p>
-            </div>
-          </div>
-          <div class="status-pill" id="statusText">连接中…</div>
-        </header>
-
-        <section class="chat-toolbar">
-          <!-- Thread ID 现在自动从 sessionId 获取，不再需要手动输入 -->
-          <input type="hidden" id="threadId" value="" />
-          <div class="toolbar-field grow">
-            <span>猫猫成员</span>
-            <div id="cats" class="cats"></div>
-          </div>
-        </section>
-
-        <section id="log" class="chat-log"></section>
-
-        <section class="chat-composer">
-          <textarea id="prompt" rows="3" placeholder="输入你的消息，点击发送后由选中的猫猫协作处理..."></textarea>
-          <div class="composer-actions">
-            <button id="clearBtn" class="ghost">清空</button>
-            <button id="runBtn">发送</button>
-          </div>
-        </section>
-      </div>
-    </main>
-
-    <script src="/session-manager.js"></script>
-    <script src="/history-panel.js"></script>
-    <script src="/app.js"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vite App</title>
+  <script type="module" crossorigin src="/assets/index-HTQvcNma.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Cx_TccbQ.css">
+</head>
+<body>
+  <div id="root"></div>
+</body>
 </html>

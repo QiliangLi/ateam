@@ -1,0 +1,33 @@
+{
+  "sessions": [
+    {
+      "id": "session-1772385279584-j73i3rxku",
+      "title": "@opus 你和小伙伴讨论一下目前的前端设计是否可以继续被优...",
+      "createdAt": 1772385279584,
+      "updatedAt": 1772506344423,
+      "messageCount": 62
+    },
+    {
+      "id": "session-1772471546621-ifr7d0jgx",
+      "title": null,
+      "createdAt": 1772471546622,
+      "updatedAt": 1772471546622,
+      "messageCount": 0
+    },
+    {
+      "id": "session-1772350107470-oa1m6kkld",
+      "title": "请记住这个秘密词：\"香蕉派_1772350107999\"，不...",
+      "createdAt": 1772350107470,
+      "updatedAt": 1772350120189,
+      "messageCount": 2
+    },
+    {
+      "id": "session-1772349444299-6cjvhx5oh",
+      "title": "请记住这个秘密词：\"香蕉派_1772349444830\"，不...",
+      "createdAt": 1772349444299,
+      "updatedAt": 1772349526853,
+      "messageCount": 2
+    }
+  ],
+  "currentSessionId": "session-1772471546621-ifr7d0jgx"
+}

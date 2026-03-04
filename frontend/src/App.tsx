@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
-import { Plus, MessageSquare, Trash2, Sparkles, from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Sparkles } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { Composer } from './components/Composer';
 import { SidebarRight } from './components/SidebarRight';
@@ -227,10 +227,6 @@ function App() {
                           title="删除会话"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
                         </button>
                       </div>
                     </div>

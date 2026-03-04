@@ -1,0 +1,48 @@
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/components/ui/Slider.test.tsx[2m [ src/components/ui/Slider.test.tsx ][22m
+[41m[1m FAIL [22m[49m src/components/ui/Slider.test.tsx[2m [ src/components/ui/Slider.test.tsx ][22m
+[31m[1mError[22m: Transform failed with 1 error:
+/Users/qiliangli/Documents/Coding/ateam/frontend/src/components/ui/Slider.test.tsx:2:36: ERROR: Expected "}" but found "'vitest'"[39m
+[31m[1mError[22m: Transform failed with 1 error:
+/Users/qiliangli/Documents/Coding/ateam/frontend/src/components/ui/Slider.test.tsx:2:36: ERROR: Expected "}" but found "'vitest'"[39m
+  Plugin: [35mvite:esbuild[39m
+  File: [36m/Users/qiliangli/Documents/Coding/ateam/frontend/src/components/ui/Slider.test.tsx[39m:2:36
+[33m  
+  Expected "}" but found "'vitest'"
+  1  |  import { render, screen, fireEvent } from '@testing-library/react';
+  2  |  import { describe, it, expect, from 'vitest';
+     |                                      ^
+  3  |  import { Slider } from './Slider';
+  4  |  
+  [39m
+  Plugin: [35mvite:esbuild[39m
+  File: [36m/Users/qiliangli/Documents/Coding/ateam/frontend/src/components/ui/Slider.test.tsx[39m:2:36
+[33m  
+  Expected "}" but found "'vitest'"
+  1  |  import { render, screen, fireEvent } from '@testing-library/react';
+  2  |  import { describe, it, expect, from 'vitest';
+     |                                      ^
+  3  |  import { Slider } from './Slider';
+  4  |  
+  [39m
+[90m [2m❯[22m failureErrorWithLog node_modules/esbuild/lib/main.js:[2m1467:15[22m[39m
+[90m [2m❯[22m failureErrorWithLog node_modules/esbuild/lib/main.js:[2m1467:15[22m[39m
+[90m [2m❯[22m node_modules/esbuild/lib/main.js:[2m736:50[22m[39m
+[90m [2m❯[22m node_modules/esbuild/lib/main.js:[2m736:50[22m[39m
+[90m [2m❯[22m responseCallbacks.<computed> node_modules/esbuild/lib/main.js:[2m603:9[22m[39m
+[90m [2m❯[22m handleIncomingPacket node_modules/esbuild/lib/main.js:[2m658:12[22m[39m
+[90m [2m❯[22m Socket.readFromStdout node_modules/esbuild/lib/main.js:[2m581:7[22m[39m
+
+[90m [2m❯[22m responseCallbacks.<computed> node_modules/esbuild/lib/main.js:[2m603:9[22m[39m
+[90m [2m❯[22m handleIncomingPacket node_modules/esbuild/lib/main.js:[2m658:12[22m[39m
+[90m [2m❯[22m Socket.readFromStdout node_modules/esbuild/lib/main.js:[2m581:7[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+

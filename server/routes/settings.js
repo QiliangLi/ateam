@@ -34,8 +34,8 @@ function getDisplaySettings() {
     const settings = JSON.parse(content);
     // 验证并补全字段
     return {
-      messageFontSize: clamp(settings.messageFontSize, 12, 20, 14),
-      uiFontSize: clamp(settings.uiFontSize, 12, 18, 14),
+      messageFontSize: clamp(settings.messageFontSize, 10, 20, 14),
+      uiFontSize: clamp(settings.uiFontSize, 10, 18, 14),
       spacing: clamp(settings.spacing, 1, 8, 4)
     };
   } catch (err) {
@@ -49,8 +49,8 @@ function getDisplaySettings() {
  */
 function updateDisplaySettings(newSettings) {
   const settings = {
-    messageFontSize: clamp(newSettings.messageFontSize, 12, 20, 14),
-    uiFontSize: clamp(newSettings.uiFontSize, 12, 18, 14),
+    messageFontSize: clamp(newSettings.messageFontSize, 10, 20, 14),
+    uiFontSize: clamp(newSettings.uiFontSize, 10, 18, 14),
     spacing: clamp(newSettings.spacing, 1, 8, 4)
   };
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));

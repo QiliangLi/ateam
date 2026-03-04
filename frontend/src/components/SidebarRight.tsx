@@ -1,7 +1,7 @@
 import React from 'react';
 import { Accordion } from './ui/Accordion';
 import { Timeline, TimelineItem } from './ui/Timeline';
-import { Settings, Info, BarChart3, Brain, from 'lucide-react';
+import { Settings, Info, BarChart3, Brain } from 'lucide-react';
 
 export function SidebarRight({ onOpenSettings }: { onOpenSettings: () => void }) {
     const statsItems = [
@@ -16,10 +16,15 @@ export function SidebarRight({ onOpenSettings }: { onOpenSettings: () => void })
                 <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs">
                         <span className="text-muted-foreground">@opus</span>
-                        <span className="font-mono font-medium">{metrics.tokens} tokens</span>
+                        <span className="font-mono font-medium">1,245 tokens</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-muted-foreground">@gemini</span>
+                        <span className="font-mono font-medium">850 tokens</span>
                     </div>
                     <div className="w-full bg-border rounded-full h-1.5 mt-2">
                         <div className="bg-primary h-1.5 rounded-full" style={{ width: '65%' }}></div>
+                    </div>
                 </div>
             )
         },
@@ -50,27 +55,27 @@ export function SidebarRight({ onOpenSettings }: { onOpenSettings: () => void })
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/50">
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2">
                     <Info className="w-4 h-4 text-primary" />
-                    <span>Inspector</span>
-                </button>
+                    Inspector
+                </h3>
                 <button
                     onClick={onOpenSettings}
-                    className="icon-btn focus-ring"
-                    title="设置"
+                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+                    title="Settings & Presets"
                 >
                     <Settings className="w-4 h-4" />
-            </button>
-        </div>
-
-        <div className="space-y-6">
-            <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Session链</h4>
-            <div>
-                <Timeline items={timelineItems} />
+                </button>
             </div>
 
-            <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Metrics Analytics</h4>
-                <Accordion items={statsItems} />
+            <div className="space-y-6">
+                <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Session Chain</h4>
+                    <Timeline items={timelineItems} />
+                </div>
+
+                <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Metrics Analytics</h4>
+                    <Accordion items={statsItems} />
+                </div>
             </div>
         </div>
     );

@@ -8,6 +8,13 @@ const promptInput = document.getElementById('prompt');
 const sessionList = document.getElementById('sessionList');
 const sessionSearch = document.getElementById('sessionSearch');
 const newSessionBtn = document.getElementById('newSessionBtn');
+
+// Right panel elements
+const currentThreadIdEl = document.getElementById('currentThreadId');
+const msgCountEl = document.getElementById('msgCount');
+const modelCountEl = document.getElementById('modelCount');
+const chainCountEl = document.getElementById('chainCount');
+const chainListEl = document.getElementById('chainList');
 const toggleSidebarBtn = document.getElementById('toggleSidebar');
 const historyPanel = document.querySelector('.history-panel');
 
@@ -15,6 +22,16 @@ let availableCats = [];
 let selectedCats = new Set();
 let eventSource = null;
 let currentSessionId = null; // 当前会话 ID
+
+// 文本框回车发送
+if (promptInput) {
+  promptInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      runBtn.click();
+    }
+  });
+}
 
 // 切换侧边栏
 if (toggleSidebarBtn && historyPanel) {
@@ -73,8 +90,13 @@ function appendMessage({ text, label, direction = 'left', kind = 'agent', save =
   time.textContent = formatTime();
 
   const content = document.createElement('div');
-  content.className = 'bubble-content';
-  content.textContent = text;
+  content.className = 'bubble-content markdown-body';
+  // If marked is available, and it's an agent message or user message (not system), parse markdown
+  if (kind !== 'system' && window.marked) {
+    content.innerHTML = marked.parse(text || '');
+  } else {
+    content.textContent = text;
+  }
 
   meta.appendChild(author);
   meta.appendChild(time);
@@ -84,6 +106,12 @@ function appendMessage({ text, label, direction = 'left', kind = 'agent', save =
 
   logEl.appendChild(row);
   logEl.scrollTop = logEl.scrollHeight;
+
+  // 更新消息总计
+  if (msgCountEl) {
+    const list = document.querySelectorAll('.message-row:not(.system)');
+    msgCountEl.textContent = list.length;
+  }
 
   // 保存消息到当前会话（非系统消息，且 save=true）
   if (save && kind !== 'system' && window.SessionManager && currentSessionId) {
@@ -133,7 +161,11 @@ function appendChunk(catId, text) {
 
   if (entry.isThinking) {
     // 第一次收到输出，移除"正在思考"占位符，开始显示实际内容
-    entry.content.textContent = text;
+    if (window.marked) {
+      entry.content.innerHTML = marked.parse(text || '');
+    } else {
+      entry.content.textContent = text;
+    }
     entry.isThinking = false;
 
     // 更新状态指示器：正在生成回复
@@ -141,8 +173,12 @@ function appendChunk(catId, text) {
       entry.statusIndicator.textContent = '💬 正在生成回复...';
     }
   } else {
-    // 追加到已有内容
-    entry.content.textContent = entry.fullText;
+    // 追加到已有内容并重新解析完整的 Markdown
+    if (window.marked) {
+      entry.content.innerHTML = marked.parse(entry.fullText || '');
+    } else {
+      entry.content.textContent = entry.fullText;
+    }
   }
 
   // 滚动到底部
@@ -300,7 +336,11 @@ function connectStream(threadId) {
       if (entry) {
         // 使用 callback 的内容替换现有内容（权威来源）
         entry.fullText = payload.content;
-        entry.content.textContent = payload.content;
+        if (window.marked) {
+          entry.content.innerHTML = marked.parse(payload.content || '');
+        } else {
+          entry.content.textContent = payload.content;
+        }
         entry.isThinking = false;
         // 恢复正常样式
         entry.content.style.color = '';
@@ -412,6 +452,7 @@ runBtn.addEventListener('click', async () => {
 
 clearBtn.addEventListener('click', () => {
   logEl.innerHTML = '';
+  if (msgCountEl) msgCountEl.textContent = '0';
   clearActiveMessages();
 });
 
@@ -555,10 +596,36 @@ function renderSessionListWithFilter(sessions, highlightId) {
   });
 }
 
+// 更新右侧面板信息
+function updateRightPanel(session) {
+  if (!session) {
+    if (currentThreadIdEl) currentThreadIdEl.textContent = '...';
+    if (msgCountEl) msgCountEl.textContent = '0';
+    if (chainListEl) chainListEl.innerHTML = '';
+    if (chainCountEl) chainCountEl.textContent = '0 节点';
+    return;
+  }
+
+  if (currentThreadIdEl) currentThreadIdEl.textContent = session.id || '...';
+  if (msgCountEl) msgCountEl.textContent = session.messageCount || 0;
+
+  if (chainListEl) {
+    chainListEl.innerHTML = `
+      <div class="chain-item active">
+        <div class="chain-title">${escapeHtml(session.title || '当前会话')} <span class="tag">ACTIVE</span></div>
+        <div class="chain-meta">${session.messageCount || 0} 条消息</div>
+      </div>
+    `;
+  }
+  if (chainCountEl) chainCountEl.textContent = '1 节点';
+}
+
 // 加载会话消息到界面
 function loadSessionMessages(session) {
   logEl.innerHTML = '';
   clearActiveMessages();
+
+  updateRightPanel(session);
 
   if (!session || !session.messages) return;
 

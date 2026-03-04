@@ -1,1 +1,5 @@
-{"messageFontSize":14,"uiFontSize":14,"spacing":4}
+{
+  "messageFontSize": 12,
+  "uiFontSize": 11,
+  "spacing": 1
+}

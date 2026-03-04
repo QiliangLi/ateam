@@ -16,11 +16,11 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
     return (
         <Dialog isOpen={isOpen} onClose={onClose} title="Chat Settings">
-            <div className="flex gap-4 border-b mb-4">
+            <div className="flex gap-4 border-b border-border/50 mb-4">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
-                        className={`pb-2 text-sm font-medium transition-colors ${activeTab === tab.id ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-800'}`}
+                        className={`pb-2 text-sm font-medium transition-colors cursor-pointer ${activeTab === tab.id ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                         onClick={() => setActiveTab(tab.id)}
                     >
                         {tab.label}
@@ -31,19 +31,19 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
             {activeTab === 'general' && (
                 <div className="space-y-4">
                     <div className="flex flex-col gap-1">
-                        <label className="text-sm font-medium">Default Model Engine</label>
-                        <select className="border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+                        <label className="text-sm font-medium text-foreground">Default Model Engine</label>
+                        <select className="border border-border/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary glass">
                             <option value="gpt-4o">GPT-4o (Default)</option>
                             <option value="claude-3-opus">Claude 3 Opus</option>
                             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                         </select>
                     </div>
 
-                    <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50">
-                        <span className="text-sm font-medium">Stream Responses (Auto-scroll)</span>
+                    <div className="flex items-center justify-between p-3 border border-border/50 rounded-lg glass-subtle">
+                        <span className="text-sm font-medium text-foreground">Stream Responses (Auto-scroll)</span>
                         <button
                             onClick={() => setStreamEnabled(!streamEnabled)}
-                            className={`w-10 h-6 rounded-full flex items-center px-1 transition-colors ${streamEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+                            className={`w-10 h-6 rounded-full flex items-center px-1 transition-colors cursor-pointer ${streamEnabled ? 'bg-primary' : 'bg-muted'}`}
                         >
                             <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform ${streamEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
                         </button>
@@ -56,9 +56,9 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     <Slider
                         label="消息字体大小"
                         value={settings.messageFontSize}
-                        min={12}
+                        min={10}
                         max={20}
-                        minLabel="12"
+                        minLabel="10"
                         maxLabel="20"
                         onChange={(value) => updateSettings({ messageFontSize: value })}
                     />
@@ -66,9 +66,9 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     <Slider
                         label="UI 字体大小"
                         value={settings.uiFontSize}
-                        min={12}
+                        min={10}
                         max={18}
-                        minLabel="12"
+                        minLabel="10"
                         maxLabel="18"
                         onChange={(value) => updateSettings({ uiFontSize: value })}
                     />
@@ -83,10 +83,10 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         onChange={(value) => updateSettings({ spacing: value })}
                     />
 
-                    <div className="pt-4 border-t">
+                    <div className="pt-4 border-t border-border/50">
                         <button
                             onClick={resetSettings}
-                            className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg border"
+                            className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg border border-border/50 cursor-pointer"
                         >
                             恢复默认
                         </button>
@@ -97,13 +97,13 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
             {activeTab === 'advanced' && (
                 <div className="space-y-4">
                     <div className="flex flex-col gap-1">
-                        <label className="text-sm font-medium text-gray-700">System Prompt</label>
-                        <textarea className="border rounded-lg px-3 py-2 text-sm h-24 outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="You are a helpful A-team member..."></textarea>
+                        <label className="text-sm font-medium text-foreground">System Prompt</label>
+                        <textarea className="border border-border/50 rounded-lg px-3 py-2 text-sm h-24 outline-none focus:ring-2 focus:ring-primary/20 glass" placeholder="You are a helpful A-team member..."></textarea>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <label className="text-sm font-medium text-gray-700">Temperature</label>
-                        <input type="range" min="0" max="2" step="0.1" defaultValue="0.7" className="w-full accent-blue-600" />
-                        <div className="flex justify-between text-xs text-gray-500">
+                        <label className="text-sm font-medium text-foreground">Temperature</label>
+                        <input type="range" min="0" max="2" step="0.1" defaultValue="0.7" className="w-full accent-primary" />
+                        <div className="flex justify-between text-xs text-muted-foreground">
                             <span>Precise (0.0)</span>
                             <span>Creative (2.0)</span>
                         </div>
@@ -111,9 +111,9 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 </div>
             )}
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                <button onClick={onClose} className="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-lg">Save Changes</button>
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border/50">
+                <button onClick={onClose} className="px-4 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg cursor-pointer">Cancel</button>
+                <button onClick={onClose} className="px-4 py-2 text-sm bg-primary text-white hover:bg-primary-hover rounded-lg cursor-pointer">Save Changes</button>
             </div>
         </Dialog>
     );

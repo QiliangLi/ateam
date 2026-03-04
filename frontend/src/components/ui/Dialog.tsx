@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X } from 'lucide-react';
-import { cn } from '../../lib/utils';
 
 interface DialogProps {
     isOpen: boolean;
@@ -14,12 +13,12 @@ export function Dialog({ isOpen, onClose, title, children }: DialogProps) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-            <div className="z-50 w-full max-w-lg p-6 bg-white rounded-xl shadow-lg relative animate-in zoom-in-95 duration-200 slide-in-from-bottom-2">
+            <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm" onClick={onClose} />
+            <div className="z-50 w-full max-w-lg p-6 glass-strong rounded-xl shadow-lg relative animate-in zoom-in-95 duration-200 slide-in-from-bottom-2">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold">{title}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
-                        <X className="w-5 h-5 text-gray-500" />
+                    <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-muted transition-colors cursor-pointer">
+                        <X className="w-5 h-5 text-muted-foreground" />
                     </button>
                 </div>
                 <div>
