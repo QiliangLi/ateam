@@ -1,28 +1,34 @@
 import React, { useState } from 'react';
 import { Dialog } from './ui/Dialog';
+import { Slider } from './ui/Slider';
+import { useDisplaySettings, DEFAULT_SETTINGS } from '../contexts/DisplaySettingsContext';
 
 export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [activeTab, setActiveTab] = useState('general');
     const [streamEnabled, setStreamEnabled] = useState(true);
+    const { settings, updateSettings, resetSettings } = useDisplaySettings();
+
+    const tabs = [
+        { id: 'general', label: 'General presets' },
+        { id: 'display', label: 'Display' },
+        { id: 'advanced', label: 'Advanced params' }
+    ];
 
     return (
         <Dialog isOpen={isOpen} onClose={onClose} title="Chat Settings">
             <div className="flex gap-4 border-b mb-4">
-                <button
-                    className={`pb-2 text-sm font-medium transition-colors ${activeTab === 'general' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-800'}`}
-                    onClick={() => setActiveTab('general')}
-                >
-                    General presets
-                </button>
-                <button
-                    className={`pb-2 text-sm font-medium transition-colors ${activeTab === 'advanced' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-800'}`}
-                    onClick={() => setActiveTab('advanced')}
-                >
-                    Advanced params
-                </button>
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        className={`pb-2 text-sm font-medium transition-colors ${activeTab === tab.id ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-800'}`}
+                        onClick={() => setActiveTab(tab.id)}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
-            {activeTab === 'general' ? (
+            {activeTab === 'general' && (
                 <div className="space-y-4">
                     <div className="flex flex-col gap-1">
                         <label className="text-sm font-medium">Default Model Engine</label>
@@ -43,7 +49,52 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         </button>
                     </div>
                 </div>
-            ) : (
+            )}
+
+            {activeTab === 'display' && (
+                <div className="space-y-6">
+                    <Slider
+                        label="消息字体大小"
+                        value={settings.messageFontSize}
+                        min={12}
+                        max={20}
+                        minLabel="12"
+                        maxLabel="20"
+                        onChange={(value) => updateSettings({ messageFontSize: value })}
+                    />
+
+                    <Slider
+                        label="UI 字体大小"
+                        value={settings.uiFontSize}
+                        min={12}
+                        max={18}
+                        minLabel="12"
+                        maxLabel="18"
+                        onChange={(value) => updateSettings({ uiFontSize: value })}
+                    />
+
+                    <Slider
+                        label="间距等级"
+                        value={settings.spacing}
+                        min={1}
+                        max={8}
+                        minLabel="紧凑 1"
+                        maxLabel="8 宽松"
+                        onChange={(value) => updateSettings({ spacing: value })}
+                    />
+
+                    <div className="pt-4 border-t">
+                        <button
+                            onClick={resetSettings}
+                            className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg border"
+                        >
+                            恢复默认
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'advanced' && (
                 <div className="space-y-4">
                     <div className="flex flex-col gap-1">
                         <label className="text-sm font-medium text-gray-700">System Prompt</label>
