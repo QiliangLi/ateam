@@ -7,26 +7,37 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="app-container">
-      <header class="chat-header">
-        <div class="header-left">
-          <button id="toggleSidebar" class="icon-btn" title="切换侧边栏">☰</button>
-          <div>
-            <h1>Cat Cafe Chat</h1>
-            <p>多猫协作 · Web 聊天界面</p>
-          </div>
+    <main class="chat-app">
+      <!-- 左侧历史记录面板 -->
+      <aside class="history-panel">
+        <div class="history-header">
+          <input type="text" id="sessionSearch" placeholder="搜索会话..." />
+          <button id="newSessionBtn" title="新建会话">+</button>
         </div>
-        <div class="status-pill" id="statusText">连接中…</div>
-      </header>
+        <div id="sessionList" class="session-list"></div>
+      </aside>
 
-      <main class="chat-main">
-        <aside class="sidebar-left" id="sidebarLeft">
-          <div class="sidebar-header">
-            <h2>猫猫成员</h2>
-            <button id="refreshCats" class="icon-btn" title="刷新">↻</button>
+      <!-- 右侧主聊天区域 -->
+      <div class="chat-main">
+        <header class="chat-header">
+          <div class="header-left">
+            <button id="toggleSidebar" class="icon-btn" title="切换侧边栏">☰</button>
+            <div>
+              <h1>Cat Cafe Chat</h1>
+              <p>多猫协作 · Web 聊天界面</p>
+            </div>
           </div>
-          <div id="catList"></div>
-        </aside>
+          <div class="status-pill" id="statusText">连接中…</div>
+        </header>
+
+        <section class="chat-toolbar">
+          <!-- Thread ID 现在自动从 sessionId 获取，不再需要手动输入 -->
+          <input type="hidden" id="threadId" value="" />
+          <div class="toolbar-field grow">
+            <span>猫猫成员</span>
+            <div id="cats" class="cats"></div>
+          </div>
+        </section>
 
         <section id="log" class="chat-log"></section>
 
@@ -37,8 +48,8 @@
             <button id="runBtn">发送</button>
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
 
     <script src="/session-manager.js"></script>
     <script src="/history-panel.js"></script>
