@@ -264,6 +264,22 @@ const server = http.createServer(async (req, res) => {
 
   // ========== End Sessions API ==========
 
+  // ========== Display Settings API ==========
+
+  // GET /api/settings/display - 获取显示设置
+  if (req.method === 'GET' && pathname === '/api/settings/display') {
+    const { handleGetDisplaySettings } = require('../routes/settings');
+    return handleGetDisplaySettings(req, res, sendJson);
+  }
+
+  // POST /api/settings/display - 更新显示设置
+  if (req.method === 'POST' && pathname === '/api/settings/display') {
+    const { handleUpdateDisplaySettings } = require('../routes/settings');
+    return handleUpdateDisplaySettings(req, res, sendJson, readBody);
+  }
+
+  // ========== End Display Settings API ==========
+
   if (req.method === 'POST' && pathname === '/api/run') {
     const raw = await readBody(req);
     let payload = null;
