@@ -1,50 +1,351 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+/* ============================================
+   Chat Cafe Design System v2.1
+   Pattern: Minimal Clean
+   Typography: Plus Jakarta Sans
+   Colors: Teal focus + Orange accent
+   ============================================ */
 
 @theme {
-  --color-border: hsl(214.3 31.8% 91.4%);
-  --color-input: hsl(214.3 31.8% 91.4%);
-  --color-ring: hsl(222.2 84% 4.9%);
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222.2 84% 4.9%);
+  /* Primary - Teal */
+  --color-primary: #0D9488;
+  --color-primary-foreground: #F0FDFA;
+  --color-primary-hover: #0F766E;
 
-  --color-primary: hsl(222.2 47.4% 11.2%);
-  --color-primary-foreground: hsl(210 40% 98%);
+  /* Secondary - Light Teal */
+  --color-secondary: #14B8A6;
+  --color-secondary-foreground: #134E4A;
 
-  --color-secondary: hsl(210 40% 96.1%);
-  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  /* Accent - Orange */
+  --color-accent: #F97316;
+  --color-accent-foreground: #FFF7ED;
 
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(210 40% 98%);
+  /* Neutral - 统一浅色系 */
+  --color-background: #F8FAFC;
+  --color-foreground: #134E4A;
+  --color-muted: #F1F5F9;
+  --color-muted-foreground: #64748B;
+  --color-border: #E2E8F0;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #134E4A;
 
-  --color-muted: hsl(210 40% 96.1%);
-  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  /* Semantic */
+  --color-destructive: #EF4444;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
 
-  --color-accent: hsl(210 40% 96.1%);
-  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  /* Radius */
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1rem;
+}
 
-  --radius: 0.5rem;
-  --radius-lg: 0.5rem;
-  --radius-md: calc(0.5rem - 2px);
-  --radius-sm: calc(0.5rem - 4px);
+:root {
+  /* Font Sizes (Display Settings) */
+  --font-message: 14px;
+  --font-ui: 14px;
+  --spacing-base: 8px;
 }
 
 @layer base {
-  :root {
-    --font-message: 14px;
-    --font-ui: 14px;
-    --spacing-base: 8px;
-  }
-
   * {
-    border-color: var(--color-border);
+    border-color: transparent;
   }
 
   body {
-    background-color: var(--color-background);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #F0FDFA 0%, #F8FAFC 50%, #FFF7ED 100%);
     color: var(--color-foreground);
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* ============================================
+   Typography Scale
+   ============================================ */
+@layer base {
+  h1 { font-size: 1.875rem; font-weight: 700; letter-spacing: -0.02em; }
+  h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+  h3 { font-size: 1.25rem; font-weight: 600; }
+  h4 { font-size: 1.125rem; font-weight: 500; }
+}
+
+/* UI 字体 */
+.text-sm { font-size: var(--font-ui) !important; }
+.text-xs { font-size: calc(var(--font-ui) * 0.85) !important; }
+label { font-size: var(--font-ui) !important; }
+
+/* 消息字体 */
+.prose, .prose *, .message-content, .message-content * { font-size: var(--font-message) !important; }
+code, pre { font-size: var(--font-message) !important; }
+
+/* ============================================
+   Animation
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   Scrollbar
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(13, 148, 136, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 148, 136, 0.4);
+}
+
+/* ============================================
+   Interaction Enhancements
+   ============================================ */
+
+/* Button base styles with hover/focus states */
+.btn-interactive {
+  @apply transition-all duration-200 cursor-pointer;
+}
+
+.btn-interactive:hover {
+  @apply transform-gpu scale-[1.02];
+}
+
+.btn-interactive:active {
+  @apply scale-[0.98];
+}
+
+.btn-interactive:focus-visible {
+  @apply outline-none ring-2 ring-primary/50;
+}
+
+/* Card hover effects */
+.card-interactive {
+  @apply transition-all duration-200;
+}
+
+.card-interactive:hover {
+  @apply shadow-lg -translate-y-0.5;
+}
+
+/* Session item hover */
+.session-item {
+  @apply transition-all duration-200 cursor-pointer;
+}
+
+.session-item:hover {
+  @apply bg-white/90 shadow-sm;
+}
+
+.session-item.active {
+  @apply bg-primary/10 shadow-sm border-l-2 border-primary;
+}
+
+/* Icon button with hover state */
+.icon-btn {
+  @apply p-2 rounded-lg transition-all duration-200 cursor-pointer;
+}
+
+.icon-btn:hover {
+  @apply bg-primary/10 text-primary;
+}
+
+.icon-btn:active {
+  @apply scale-95;
+}
+
+/* ============================================
+   Visual Hierarchy
+   ============================================ */
+
+/* Shadow system */
+.shadow-soft {
+  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.05),
+              0 4px 16px -2px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-medium {
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08),
+              0 8px 24px -4px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-elevated {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.1),
+              0 16px 48px -8px rgba(0, 0, 0, 0.1);
+}
+
+/* Glass card effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* Subtle border for cards */
+.card-border {
+  border: 1px solid rgba(13, 148, 136, 0.1);
+}
+
+/* Accent highlight */
+.accent-highlight {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1) 0%, rgba(20, 184, 166, 0.05) 100%);
+}
+
+/* ============================================
+   Code Block Enhancements
+   ============================================ */
+
+/* Code block container */
+.code-block-wrapper {
+  @apply relative rounded-xl overflow-hidden;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  margin: 1rem 0;
+}
+
+/* Code block header */
+.code-block-header {
+  @apply flex items-center justify-between px-4 py-2.5;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Code language badge */
+.code-lang-badge {
+  @apply text-[11px] font-semibold px-2.5 py-1 rounded-md uppercase tracking-wider;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.3) 0%, rgba(20, 184, 166, 0.2) 100%);
+  color: #5eead4;
+  border: 1px solid rgba(94, 234, 212, 0.2);
+}
+
+/* Copy button */
+.code-copy-btn {
+  @apply p-2 rounded-lg transition-all duration-200 cursor-pointer;
+  color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+}
+
+.code-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.code-copy-btn.copied {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+/* Code content area */
+.code-content {
+  @apply p-4 overflow-x-auto;
+  font-family: 'Fira Code', 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  font-size: calc(var(--font-message) * 0.95);
+  line-height: 1.7;
+  tab-size: 2;
+  color: #e2e8f0;
+}
+
+/* Syntax highlighting colors */
+.code-keyword { color: #c084fc; }
+.code-string { color: #4ade80; }
+.code-number { color: #fbbf24; }
+.code-comment { color: #64748b; font-style: italic; }
+.code-function { color: #60a5fa; }
+.code-operator { color: #f472b6; }
+.code-variable { color: #f8fafc; }
+.code-property { color: #38bdf8; }
+
+/* Inline code */
+.inline-code {
+  @apply px-2 py-0.5 rounded-lg font-mono;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.15) 0%, rgba(20, 184, 166, 0.1) 100%);
+  color: var(--color-primary);
+  font-size: calc(var(--font-message) * 0.9);
+  border: 1px solid rgba(13, 148, 136, 0.2);
+}
+
+/* ============================================
+   Loading States
+   ============================================ */
+
+/* Skeleton loading */
+.skeleton {
+  @apply animate-pulse;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Typing indicator */
+.typing-indicator {
+  @apply flex items-center gap-1;
+}
+
+.typing-indicator span {
+  @apply w-2 h-2 rounded-full bg-primary/60;
+  animation: typing-bounce 1.4s ease-in-out infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+}
+
+/* Button loading state */
+.btn-loading {
+  @apply relative overflow-hidden pointer-events-none;
+}
+
+.btn-loading::after {
+  content: '';
+  @apply absolute inset-0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: btn-shimmer 1.5s infinite;
+}
+
+@keyframes btn-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ============================================
+   Focus States (Accessibility)
+   ============================================ */
+
+/* Focus ring for interactive elements */
+.focus-ring:focus-visible {
+  @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-white;
+}
+
+/* Focus within for containers */
+.focus-within-ring:focus-within {
+  @apply ring-2 ring-primary/30;
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Bot, User } from 'lucide-react';
 import { Badge } from './ui/Badge';
 import { Collapsible } from './ui/Collapsible';
 import { cn } from '../lib/utils';
@@ -33,19 +33,30 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
 
     if (!inline && match) {
         return (
-            <div className="relative group rounded-md overflow-hidden bg-gray-900 border border-gray-800 my-4">
-                <div className="flex items-center justify-between px-4 py-1.5 bg-gray-800/50">
-                    <span className="text-xs font-mono text-gray-400">{match[1]}</span>
+            <div className="my-4 rounded-xl overflow-hidden bg-slate-900 shadow-medium border border-slate-700/50">
+                <div className="flex items-center justify-between px-4 py-2 bg-slate-800/50 border-b border-slate-700/50">
+                    <span className="text-xs font-mono font-medium text-teal-400 bg-teal-400/10 px-2 py-1 rounded">
+                        {match[1]}
+                    </span>
                     <button
                         onClick={copyToClipboard}
-                        className="text-gray-400 hover:text-white transition-colors p-1 rounded"
-                        title="Copy code"
+                        className={cn(
+                            "p-1.5 rounded-md transition-all duration-200 cursor-pointer",
+                            copied
+                                ? "text-emerald-400 bg-emerald-400/10"
+                                : "text-slate-400 hover:text-white hover:bg-slate-700"
+                        )}
+                        title={copied ? "已复制!" : "复制代码"}
                     >
-                        {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     </button>
                 </div>
-                <div className="overflow-x-auto p-4">
-                    <code className={cn("text-sm text-gray-100 font-mono", className)} {...props}>
+                <div className="p-4 overflow-x-auto">
+                    <code
+                        className="text-sm text-slate-100 font-mono leading-relaxed"
+                        style={{ fontSize: 'var(--font-message)' }}
+                        {...props}
+                    >
                         {children}
                     </code>
                 </div>
@@ -54,7 +65,10 @@ const CodeBlock = ({ inline, className, children, ...props }: any) => {
     }
 
     return (
-        <code className={cn("bg-gray-100 text-pink-600 px-1.5 py-0.5 rounded-md text-sm font-mono", className)} {...props}>
+        <code
+            className="inline-code"
+            {...props}
+        >
             {children}
         </code>
     );
@@ -67,7 +81,7 @@ export function ChatMessage({ role, content, agentName, thoughtProcess, metrics 
     if (isSystem) {
         return (
             <div className="flex justify-center my-4">
-                <div className="bg-gray-100 text-gray-500 text-xs px-3 py-1 rounded-full">
+                <div className="bg-muted text-muted-foreground text-xs px-4 py-1.5 rounded-full shadow-soft">
                     {content}
                 </div>
             </div>
@@ -75,38 +89,52 @@ export function ChatMessage({ role, content, agentName, thoughtProcess, metrics 
     }
 
     return (
-        <div className={cn("flex w-full mb-3 gap-3", isUser && "justify-end")}>
+        <div
+            className={cn("flex w-full gap-3", isUser && "justify-end")}
+            style={{ marginBottom: 'var(--spacing-base)' }}
+        >
             {!isUser && (
                 <div
-                    className="w-7 h-7 rounded-lg bg-gray-100 border flex items-center justify-center shrink-0"
+                    className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-soft transition-transform duration-200 hover:scale-105"
                     style={{ fontSize: 'var(--font-ui)' }}
                 >
-                    <span className="text-xs">🐱</span>
+                    <Bot className="w-5 h-5 text-white" />
                 </div>
             )}
 
-            <div className={cn("flex flex-col gap-1 max-w-[85%]", isUser && "items-end")}>
+            <div className={cn("flex flex-col gap-1.5 max-w-[85%]", isUser && "items-end")}>
                 {!isUser && agentName && (
-                    <div className="text-sm font-medium text-gray-700">{agentName}</div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">{agentName}</span>
+                        <span className="text-xs text-muted-foreground">AI Agent</span>
+                    </div>
                 )}
 
                 <div
                     className={cn(
-                        "rounded-xl",
-                        isUser ? "bg-blue-600 text-white rounded-tr-sm" : "bg-white border rounded-tl-sm shadow-sm"
+                        "rounded-2xl transition-all duration-200",
+                        isUser
+                            ? "bg-gradient-to-br from-primary to-primary-hover text-white shadow-medium"
+                            : "bg-white/90 backdrop-blur-sm border border-slate-200/50 shadow-soft"
                     )}
                     style={{
-                        padding: `calc(var(--spacing-base) * 0.75)`,
+                        padding: `calc(var(--spacing-base) * 1.5)`,
                         fontSize: `var(--font-message)`
                     }}
                 >
                     {thoughtProcess && !isUser && (
-                        <Collapsible title="Thought Process" className="mb-4">
-                            <div className="whitespace-pre-wrap">{thoughtProcess}</div>
+                        <Collapsible title="Thought Process" className="mb-3">
+                            <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                                {thoughtProcess}
+                            </div>
                         </Collapsible>
                     )}
 
-                    <div className={cn("prose prose-sm max-w-none break-words", isUser && "prose-invert")}>
+                    <div className={cn(
+                        "prose prose-sm max-w-none break-words",
+                        isUser && "prose-invert",
+                        !isUser && "prose-slate"
+                    )}>
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{ code: CodeBlock as any }}
@@ -117,18 +145,18 @@ export function ChatMessage({ role, content, agentName, thoughtProcess, metrics 
                 </div>
 
                 {!isUser && metrics && (
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <Badge variant="secondary" className="bg-primary/10 text-primary font-medium">
                             {metrics.model}
                         </Badge>
-                        <Badge variant="outline" className="text-gray-500 text-[10px]">
+                        <Badge variant="outline" className="text-muted-foreground text-[10px] font-mono">
                             TTFB: {metrics.ttfb}
                         </Badge>
-                        <Badge variant="outline" className="text-gray-500 text-[10px]">
-                            Tokens: {metrics.tokens}
+                        <Badge variant="outline" className="text-muted-foreground text-[10px] font-mono">
+                            {metrics.tokens} tokens
                         </Badge>
                         {metrics.cache && (
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 text-[10px]">
+                            <Badge variant="outline" className="text-emerald-600 bg-emerald-50 text-[10px] font-medium">
                                 {metrics.cache}
                             </Badge>
                         )}
@@ -138,10 +166,10 @@ export function ChatMessage({ role, content, agentName, thoughtProcess, metrics 
 
             {isUser && (
                 <div
-                    className="w-8 h-8 rounded-lg bg-blue-100 border-blue-200 border flex items-center justify-center shrink-0"
+                    className="w-8 h-8 rounded-xl bg-accent/20 flex items-center justify-center shrink-0 shadow-soft transition-transform duration-200 hover:scale-105"
                     style={{ fontSize: 'var(--font-ui)' }}
                 >
-                    <span className="text-sm">👤</span>
+                    <User className="w-5 h-5 text-accent" />
                 </div>
             )}
         </div>

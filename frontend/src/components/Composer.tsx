@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip } from 'lucide-react';
+import { Send, Paperclip, Bot, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface ComposerProps {
@@ -12,6 +12,7 @@ export function Composer({ onSend, agents }: ComposerProps) {
     const [showPopover, setShowPopover] = useState(false);
     const [popoverFilter, setPopoverFilter] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
+    const [isSending, setIsSending] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const filteredAgents = agents.filter(a =>
@@ -22,7 +23,6 @@ export function Composer({ onSend, agents }: ComposerProps) {
         const newVal = e.target.value;
         setValue(newVal);
 
-        // Check if "@" was just typed
         const cursorPos = e.target.selectionStart;
         const textBeforeCursor = newVal.slice(0, cursorPos);
         const atIdx = textBeforeCursor.lastIndexOf('@');
@@ -86,13 +86,14 @@ export function Composer({ onSend, agents }: ComposerProps) {
     };
 
     const handleSend = () => {
-        if (value.trim()) {
+        if (value.trim() && !isSending) {
+            setIsSending(true);
             onSend(value);
             setValue('');
+            setIsSending(false);
         }
     };
 
-    // Auto-grow textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -101,21 +102,28 @@ export function Composer({ onSend, agents }: ComposerProps) {
     }, [value]);
 
     return (
-        <div className="relative border border-gray-200 rounded-xl bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400">
+        <div className="relative bg-white rounded-2xl shadow-soft card-border">
             {/* @ Mention Popover */}
             {showPopover && filteredAgents.length > 0 && (
-                <div className="absolute bottom-full left-4 mb-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
+                <div className="absolute bottom-full left-4 mb-3 w-60 bg-white rounded-xl shadow-elevated overflow-hidden z-50 border border-border/50">
                     {filteredAgents.map((agent, i) => (
                         <button
                             key={agent.id}
                             className={cn(
-                                "w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors",
-                                i === selectedIdx ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700"
+                                "w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-all duration-200 cursor-pointer",
+                                i === selectedIdx
+                                    ? "bg-primary text-white"
+                                    : "hover:bg-primary-hover text-white"
                             )}
                             onMouseDown={(e) => { e.preventDefault(); insertMention(agent); }}
                         >
-                            <span className="text-base">🤖</span>
-                            <span className="font-medium">@{agent.display}</span>
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shrink-0 shadow-soft">
+                                <Bot className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <span className="font-semibold text-foreground">@{agent.display}</span>
+                                <span className="text-xs text-muted-foreground">AI Agent</span>
+                            </div>
                         </button>
                     ))}
                 </div>
@@ -126,26 +134,33 @@ export function Composer({ onSend, agents }: ComposerProps) {
                 value={value}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message or @ to mention an agent..."
+                placeholder="输入消息或 @ 提及 AI..."
                 rows={1}
-                className="w-full px-4 py-3 text-sm text-gray-800 bg-transparent outline-none resize-none placeholder-gray-400"
-                style={{ minHeight: '44px', maxHeight: '200px' }}
+                disabled={isSending}
+                className="w-full px-4 py-3.5 text-sm text-foreground bg-transparent outline-none resize-none placeholder-muted-foreground transition-all duration-200 focus:ring disabled:opacity-50"
+                style={{ minHeight: '48px', maxHeight: '200px', fontSize: 'var(--font-message)' }}
             />
 
             {/* Footer controls */}
-            <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 bg-gray-50/50 rounded-b-xl">
-                <button className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+            <div className="flex items-center justify-between px-4 py-3 bg-muted/20 rounded-b-2xl">
+                <button className="icon-btn focus-ring" title="添加附件">
                     <Paperclip className="w-4 h-4" />
                 </button>
                 <button
                     onClick={handleSend}
-                    disabled={!value.trim()}
+                    disabled={!value.trim() || isSending}
                     className={cn(
-                        "p-1.5 rounded-lg transition-colors flex items-center justify-center",
-                        value.trim() ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-100 text-gray-400"
+                        "btn-interactive p-2.5 rounded-xl transition-all duration-200 flex items-center justify-center focus-ring",
+                        value.trim() && !isSending
+                            ? "bg-gradient-to-r from-primary to-primary-hover text-white shadow-soft"
+                            : "bg-muted text-muted-foreground cursor-not-allowed"
                     )}
                 >
-                    <Send className="w-4 h-4" />
+                    {isSending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <Send className="w-4 h-4" />
+                    )}
                 </button>
             </div>
         </div>
