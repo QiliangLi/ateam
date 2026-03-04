@@ -29,6 +29,12 @@
 }
 
 @layer base {
+  :root {
+    --font-message: 14px;
+    --font-ui: 14px;
+    --spacing-base: 8px;
+  }
+
   * {
     border-color: var(--color-border);
   }
