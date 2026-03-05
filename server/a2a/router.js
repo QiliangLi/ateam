@@ -34,7 +34,7 @@ function buildA2AMentionInstructions(currentCatId) {
 }
 
 function extractCallbackMessages(text) {
-  if (!text) return { cleanText: '', messages: [] };
+  if (!text || typeof text !== 'string') return { cleanText: '', messages: [] };
   const normalized = text.replace(CALLBACK_SPLIT_REGEX, CALLBACK_MARKER);
   const lines = normalized.split('\n');
   const messages = [];
@@ -89,7 +89,7 @@ const FILTER_PATTERNS = [
 ];
 
 function filterCallbackOutput(chunk) {
-  if (!chunk) return chunk;
+  if (!chunk || typeof chunk !== 'string') return chunk;
 
   // 先处理原有的 CALLBACK_MARKER 逻辑
   if (!chunk.includes(CALLBACK_MARKER) && !chunk.includes('_CAFE_POST_MESSAGE') && chunk.trim() !== 'CAT') {
