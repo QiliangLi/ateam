@@ -12,7 +12,7 @@ const { writeIoLog } = require('../utils/io-logger');
 const sessionStore = require('../utils/session-store');
 
 const PORT = Number(process.env.CAT_CAFE_PORT || 3200);
-const WEB_DIR = path.join(__dirname, '../../web');
+const WEB_DIR = path.join(__dirname, '../../frontend/dist');
 
 const invocationId = randomUUID();
 const callbackToken = randomUUID();
@@ -320,6 +320,13 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 400, { error: 'invalid_json' });
     }
     writeIoLog('chat.input.run', { threadId: payload.threadId || 'default', payload });
+    
+    // 更新当前会话 ID（刷新页面后能恢复）
+    const threadId = payload.threadId || 'default';
+    if (threadId !== 'default') {
+      sessionStore.switchSession(threadId);
+    }
+    
     sendJson(res, 200, { status: 'queued' });
     void handleRun(payload);
     return;

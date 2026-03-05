@@ -17,12 +17,12 @@ test.describe('A2A 聊天测试', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(BASE_URL);
     // 等待页面加载完成
-    await expect(page.locator('h1')).toContainText('Cat Cafe Chat');
+    await expect(page.locator('h1')).toContainText('Chat Cafe');
   });
 
   test('页面应该正确加载', async ({ page }) => {
     // 检查标题
-    await expect(page.locator('h1')).toHaveText('Cat Cafe Chat');
+    await expect(page.locator('h1')).toContainText('Chat Cafe');
 
     // 检查连接状态
     const statusText = page.locator('#statusText');
