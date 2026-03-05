@@ -172,41 +172,147 @@ function parseNdjson(stream, onEvent) {
   });
 }
 
+/**
+ * 解析 CLI 输出事件，提取文本、思考过程、工具调用、metrics
+ * @returns {{ text?: string, thinking?: string, tool_use?: object, metrics?: object, type: string }}
+ */
 function parseCliEvent(cli, data) {
   if (cli === 'claude') {
+    // 处理 assistant 消息
     if (data.type === 'assistant' && data.message?.content) {
-      const parts = [];
+      const result = { type: 'assistant' };
+      const textParts = [];
+      const thinkingParts = [];
+      const toolCalls = [];
+
       for (const block of data.message.content) {
         if (block.type === 'text') {
-          parts.push(block.text);
+          textParts.push(block.text);
         } else if (block.type === 'thinking') {
-          // 提取思考过程，添加标记
-          parts.push(`🤔 思考：${block.thinking}`);
+          thinkingParts.push(block.thinking);
+        } else if (block.type === 'tool_use') {
+          toolCalls.push({
+            id: block.id,
+            name: block.name,
+            input: block.input
+          });
         }
       }
-      return parts.join('');
+
+      if (textParts.length > 0) result.text = textParts.join('');
+      if (thinkingParts.length > 0) result.thinking = thinkingParts.join('\n');
+      if (toolCalls.length > 0) result.tool_use = toolCalls;
+
+      return result;
     }
-    return '';
+
+    // 处理结果事件（包含 metrics）
+    if (data.type === 'result') {
+      const result = { type: 'result' };
+      const metrics = {};
+
+      if (data.cost_usd !== undefined) metrics.cost_usd = data.cost_usd;
+      if (data.duration_ms !== undefined) metrics.duration_ms = data.duration_ms;
+      if (data.duration_api_ms !== undefined) metrics.duration_api_ms = data.duration_api_ms;
+      if (data.usage) {
+        metrics.input_tokens = data.usage.input_tokens;
+        metrics.output_tokens = data.usage.output_tokens;
+        metrics.cache_creation_input_tokens = data.usage.cache_creation_input_tokens;
+        metrics.cache_read_input_tokens = data.usage.cache_read_input_tokens;
+      }
+      if (data.num_sessions !== undefined) metrics.num_sessions = data.num_sessions;
+      if (data.total_cost_usd !== undefined) metrics.total_cost_usd = data.total_cost_usd;
+
+      if (Object.keys(metrics).length > 0) {
+        result.metrics = metrics;
+      }
+
+      // 处理错误
+      if (data.subtype === 'error') {
+        result.error = data.error?.message || data.message || 'Unknown error';
+      }
+
+      return result;
+    }
+
+    // 处理工具调用结果
+    if (data.type === 'user' && data.message?.content) {
+      for (const block of data.message.content) {
+        if (block.type === 'tool_result') {
+          return {
+            type: 'tool_result',
+            tool_use_id: block.tool_use_id,
+            content: block.content,
+            is_error: block.is_error
+          };
+        }
+      }
+    }
+
+    return { type: 'unknown' };
   }
 
   if (cli === 'codex') {
-    if (data.type === 'item.completed' && data.item?.type === 'agent_message') {
-      return data.item.text || '';
+    if (data.type === 'item.completed') {
+      const result = { type: 'item_completed' };
+      if (data.item?.type === 'agent_message' || data.item?.type === 'assistant_message') {
+        result.text = data.item.text || '';
+      }
+      if (data.item?.type === 'tool_call') {
+        result.tool_use = {
+          id: data.item.id,
+          name: data.item.name,
+          arguments: data.item.arguments
+        };
+      }
+      return result;
     }
-    if (data.type === 'item.completed' && data.item?.type === 'assistant_message') {
-      return data.item.text || '';
+
+    // Codex metrics
+    if (data.type === 'thread.completed' || data.type === 'session.completed') {
+      const result = { type: 'result' };
+      const metrics = {};
+      if (data.usage) {
+        metrics.input_tokens = data.usage.input_tokens;
+        metrics.output_tokens = data.usage.output_tokens;
+      }
+      if (Object.keys(metrics).length > 0) {
+        result.metrics = metrics;
+      }
+      return result;
     }
-    return '';
+
+    return { type: 'unknown' };
   }
 
   if (cli === 'gemini') {
-    if (data.type === 'message' && data.role === 'assistant' && data.content) {
-      return data.content;
+    if (data.type === 'message' && data.role === 'assistant') {
+      const result = { type: 'assistant' };
+      if (data.content) result.text = data.content;
+      // Gemini 的思考过程可能在 reasoningContent 中
+      if (data.reasoningContent) result.thinking = data.reasoningContent;
+      return result;
     }
-    return '';
+
+    // Gemini metrics
+    if (data.type === 'result' || data.type === 'usage') {
+      const result = { type: 'result' };
+      const metrics = {};
+      if (data.usage) {
+        metrics.input_tokens = data.usage.promptTokenCount || data.usage.input_tokens;
+        metrics.output_tokens = data.usage.candidatesTokenCount || data.usage.output_tokens;
+        metrics.total_tokens = data.usage.totalTokenCount || data.usage.total_tokens;
+      }
+      if (Object.keys(metrics).length > 0) {
+        result.metrics = metrics;
+      }
+      return result;
+    }
+
+    return { type: 'unknown' };
   }
 
-  return '';
+  return { type: 'unknown' };
 }
 
 function invokeCat(catId, prompt, options) {
@@ -248,16 +354,84 @@ function invokeCat(catId, prompt, options) {
 
   return new Promise((resolve, reject) => {
     let text = '';
+    let thinking = '';
+    let toolCalls = [];
+    let finalMetrics = null;
     let stderr = '';
 
     parseNdjson(child.stdout, (data) => {
-      const chunk = parseCliEvent(config.cli, data);
-      if (chunk) {
-        text += chunk;
-        if (typeof options.onOutput === 'function') {
-          const filtered = filterCallbackOutput(chunk);
-          if (filtered && filtered.trim()) {
-            options.onOutput({ type: 'cli', catId, text: filtered });
+      const event = parseCliEvent(config.cli, data);
+
+      // 处理 Claude/Gemini 的 assistant 消息
+      if (event.type === 'assistant') {
+        // 处理文本内容
+        if (event.text) {
+          text += event.text;
+          if (typeof options.onOutput === 'function') {
+            const filtered = filterCallbackOutput(event.text);
+            if (filtered && filtered.trim()) {
+              options.onOutput({ type: 'cli', catId, text: filtered });
+            }
+          }
+        }
+
+        // 处理思考过程
+        if (event.thinking) {
+          thinking += event.thinking;
+          if (typeof options.onOutput === 'function') {
+            options.onOutput({ type: 'thinking', catId, thinking: event.thinking });
+          }
+        }
+
+        // 处理工具调用
+        if (event.tool_use) {
+          toolCalls.push(event.tool_use);
+          if (typeof options.onOutput === 'function') {
+            options.onOutput({
+              type: 'tool_call',
+              catId,
+              toolName: event.tool_use.name,
+              toolInput: event.tool_use.input
+            });
+          }
+        }
+      }
+      // 处理 Codex 的 item_completed 消息
+      else if (event.type === 'item_completed') {
+        // 处理文本内容
+        if (event.text) {
+          text += event.text;
+          if (typeof options.onOutput === 'function') {
+            const filtered = filterCallbackOutput(event.text);
+            if (filtered && filtered.trim()) {
+              options.onOutput({ type: 'cli', catId, text: filtered });
+            }
+          }
+        }
+
+        // 处理工具调用
+        if (event.tool_use) {
+          toolCalls.push(event.tool_use);
+          if (typeof options.onOutput === 'function') {
+            options.onOutput({
+              type: 'tool_call',
+              catId,
+              toolName: event.tool_use.name,
+              toolInput: event.tool_use.arguments  // Codex 用 arguments 而不是 input
+            });
+          }
+        }
+      }
+      // 处理最终 metrics
+      else if (event.type === 'result') {
+        if (event.metrics) {
+          finalMetrics = event.metrics;
+          if (typeof options.onOutput === 'function') {
+            options.onOutput({
+              type: 'metrics',
+              catId,
+              metrics: event.metrics
+            });
           }
         }
       }
@@ -270,7 +444,11 @@ function invokeCat(catId, prompt, options) {
       reject(new Error(`${catId} failed to spawn: ${err.message}`));
     });
     child.on('close', (code) => {
-      if (code === 0) return resolve(text);
+      if (code === 0) {
+        // 返回完整结果
+        resolve({ text, thinking, toolCalls, metrics: finalMetrics });
+        return;
+      }
       const detail = stderr.trim();
       if (detail) {
         reject(new Error(`${catId} exited with code ${code}. stderr: ${detail}`));

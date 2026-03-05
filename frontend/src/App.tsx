@@ -1,149 +1,518 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
-import { Plus, MessageSquare, Trash2, Sparkles } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { ChatMessage } from './components/ChatMessage';
 import { Composer } from './components/Composer';
 import { SidebarRight } from './components/SidebarRight';
 import { SettingsModal } from './components/SettingsModal';
 import { DisplaySettingsProvider } from './contexts/DisplaySettingsContext';
+import * as api from './services/api';
+import type { Session, Message, SSEEvent } from './types';
 import './index.css';
 
-const MOCK_AGENTS = [
-  { id: 'opus', display: 'opus' },
-  { id: 'codex', display: 'codex' },
-  { id: 'gemini', display: 'gemini' },
-];
-
-interface Session {
+interface Agent {
   id: string;
-  title: string;
-  messageCount: number;
-  createdAt: Date;
-  messages: any[];
+  display: string;
 }
 
-const createNewSession = (): Session => ({
-  id: `session-${Date.now()}`,
-  title: '新会话',
-  messageCount: 0,
-  createdAt: new Date(),
-  messages: [
-    {
-      id: '1',
-      role: 'system' as const,
-      content: '新会话已创建。开始对话吧！',
-    }
-  ]
-});
-
-const INITIAL_SESSIONS: Session[] = [
-  {
-    id: 'session-1',
-    title: '多猫协作优化会议',
-    messageCount: 27,
-    createdAt: new Date(Date.now() - 3600000),
-    messages: [
-      {
-        id: '1',
-        role: 'system' as const,
-        content: 'Chat Cafe multi-agent session started.',
-      },
-      {
-        id: '2',
-        role: 'user' as const,
-        content: '你和小伙伴讨论一下目前的前端设计是否可以继续被优化？',
-      },
-      {
-        id: '3',
-        role: 'agent' as const,
-        agentName: 'opus',
-        thoughtProcess: '> 分析当前页面布局...\n> 识别所需优化点...',
-        content: '我们完全可以通过 **React** 和 **Tailwind** 重写前端架构。\n\n```css\n.glass-panel {\n  backdrop-filter: blur(20px);\n  background: rgba(255, 255, 255, 0.7);\n}\n```',
-        metrics: { model: 'claude-3-opus', ttfb: '0.8s', tokens: '412', cache: 'Hit' },
-      }
-    ]
-  }
-];
-
 function App() {
-  const [sessions, setSessions] = useState<Session[]>(INITIAL_SESSIONS);
-  const [currentSessionId, setCurrentSessionId] = useState<string>(INITIAL_SESSIONS[0]?.id);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const activeMessagesRef = useRef<Map<string, {
+    content: string;
+    sessionId: string;
+    thoughtProcess?: string;
+    status?: string;
+  }>>(new Map());
+
+
+  // 状态文本转换
+  function getStatusText(status: string, detail?: string): string {
+    const statusMap: Record<string, string> = {
+      'preparing': '📝 准备 Prompt...',
+      'fetching_context': '📚 获取对话历史...',
+      'invoking': '🤖 调用 CLI...',
+      'thinking': '💭 思考中...',
+      'tool_call': '🔧 使用工具...',
+      'replying': '💬 生成回复...',
+    };
+    const text = statusMap[status] || status;
+    return detail ? `${text}\n${detail}` : text;
+  }
+
+
+  // 生成模拟的 metrics 数据（后端暂不支持)
+  function generateMockMetrics(catId: string): { model: string; ttfb: string; tokens: string; cache: string } {
+    // 根据不同的 agent 生成不同的模型名称
+    const modelMap: Record<string, string> = {
+      'opus': 'claude-opus-4',
+      'codex': 'gpt-4o',
+      'gemini': 'gemini-2.0-flash'
+    }
+    return {
+      model: modelMap[catId] || catId,
+      ttfb: `${(0.3 + Math.random() * 0.5).toFixed(1)}s`,
+      tokens: `${Math.floor(Math.random() * 200 + 500)}`,
+      cache: Math.random() > 0 ? 'Hit' : 'Miss'
+    }
+  }
+
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
   const messages = currentSession?.messages || [];
 
+  // 滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleCreateSession = () => {
-    const newSession = createNewSession();
-    setSessions(prev => [newSession, ...prev]);
-    setCurrentSessionId(newSession.id);
-  };
+  // 初始化
+  useEffect(() => {
+    const init = async () => {
+      try {
+        // 获取 agent 列表
+        const bootstrapData = await api.bootstrap();
+        setAgents(bootstrapData.cats.map(id => ({ id, display: id })));
 
-  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-    if (currentSessionId === sessionId) {
-      const remaining = sessions.filter(s => s.id !== sessionId);
-      setCurrentSessionId(remaining[0]?.id || '');
+        // 获取会话列表
+        const { sessions: sessionList, currentSessionId: currentId } = await api.getSessions();
+        setSessions(sessionList);
+        setCurrentSessionId(currentId);
+
+        // 如果有当前会话，加载完整消息并连接 SSE
+        if (currentId) {
+          const session = await api.getSession(currentId);
+          setSessions(prev => prev.map(s => s.id === currentId ? session : s));
+          connectStream(currentId);
+        }
+      } catch (err) {
+        console.error('Bootstrap failed:', err);
+      }
+    };
+    init();
+
+    return () => {
+      eventSourceRef.current?.close();
+    };
+  }, []);
+
+  // 连接 SSE 流
+  const connectStream = useCallback((threadId: string) => {
+    eventSourceRef.current?.close();
+
+    eventSourceRef.current = api.connectStream(threadId, {
+      onStatus: (catId, status, detail) => {
+        console.log('[SSE] Status:', catId, status, detail);
+
+        // 更新 agent 的思考过程
+        setSessions(prev => prev.map(session => {
+          if (session.id !== threadId) return session;
+
+          const existing = activeMessagesRef.current.get(catId);
+          const statusText = getStatusText(status, detail);
+          activeMessagesRef.current.set(catId, {
+            ...existing,
+            content: existing?.content || '',
+            sessionId: threadId,
+            thoughtProcess: statusText,
+            status,
+          });
+
+          // 查找是否已有该 agent 的消息
+          const agentMsgIdx = session.messages.findIndex(
+            m => m.role === 'agent' && m.agentName === catId && !m.metrics
+          );
+
+          if (agentMsgIdx >= 0) {
+            // 更新现有消息的思考过程
+            const updated = [...session.messages];
+            updated[agentMsgIdx] = {
+              ...updated[agentMsgIdx],
+              thoughtProcess: (updated[agentMsgIdx].thoughtProcess || '') + statusText,
+            };
+            return { ...session, messages: updated };
+          } else {
+            // 创建新消息
+            const newMsg: Message = {
+              id: `${Date.now()}-${catId}`,
+              role: 'agent',
+              agentName: catId,
+              content: '',
+              thoughtProcess: statusText,
+              ts: Date.now()
+            };
+            return { ...session, messages: [...session.messages, newMsg] };
+          }
+        }));
+      },
+      onCli: (catId, text) => {
+        // 流式输出：追加到 agent 的消息中
+        setSessions(prev => prev.map(session => {
+          if (session.id !== threadId) return session;
+
+          const existing = activeMessagesRef.current.get(catId);
+          const newContent = (existing?.content || '') + text;
+          // 保留 thoughtProcess 和 status
+          activeMessagesRef.current.set(catId, {
+            ...existing,
+            content: newContent,
+            sessionId: threadId,
+            thoughtProcess: existing?.thoughtProcess || '',
+            status: existing?.status || '',
+          });
+
+          // 查找是否已有该 agent 的消息
+          const agentMsgIdx = session.messages.findIndex(
+            m => m.role === 'agent' && m.agentName === catId && !m.metrics
+          );
+
+          if (agentMsgIdx >= 0) {
+            // 更新现有消息
+            const updated = [...session.messages];
+            updated[agentMsgIdx] = {
+              ...updated[agentMsgIdx],
+              content: newContent,
+              thoughtProcess: existing?.thoughtProcess || updated[agentMsgIdx].thoughtProcess,
+            };
+            return { ...session, messages: updated };
+          } else {
+            // 创建新消息
+            const newMsg: Message = {
+              id: `${Date.now()}-${catId}`,
+              role: 'agent',
+              agentName: catId,
+              content: newContent,
+              thoughtProcess: existing?.thoughtProcess || '',
+              ts: Date.now()
+            };
+            return { ...session, messages: [...session.messages, newMsg] };
+          }
+        }));
+      },
+      onThinking: (catId, thinking) => {
+        // 思考过程：追加到 agent 的消息中
+        console.log('[SSE] Thinking:', catId, thinking.length, 'chars');
+
+        setSessions(prev => prev.map(session => {
+          if (session.id !== threadId) return session;
+
+          const existing = activeMessagesRef.current.get(catId);
+          const newThoughtProcess = (existing?.thoughtProcess || '') + '\n' + thinking;
+          activeMessagesRef.current.set(catId, {
+            content: existing?.content || '',
+            sessionId: threadId,
+            thoughtProcess: newThoughtProcess,
+          });
+
+          // 查找是否已有该 agent 的消息
+          const agentMsgIdx = session.messages.findIndex(
+            m => m.role === 'agent' && m.agentName === catId && !m.metrics
+          );
+
+          if (agentMsgIdx >= 0) {
+            // 更新现有消息的思考过程
+            const updated = [...session.messages];
+            updated[agentMsgIdx] = {
+              ...updated[agentMsgIdx],
+              thoughtProcess: newThoughtProcess,
+            };
+            return { ...session, messages: updated };
+          } else {
+            // 创建新消息
+            const newMsg: Message = {
+              id: `${Date.now()}-${catId}`,
+              role: 'agent',
+              agentName: catId,
+              content: '',
+              thoughtProcess: newThoughtProcess,
+              ts: Date.now()
+            };
+            return { ...session, messages: [...session.messages, newMsg] };
+          }
+        }));
+      },
+      onToolCall: (catId, toolName, toolInput) => {
+        // 工具调用：记录工具使用信息
+        console.log('[SSE] ToolCall:', catId, toolName);
+
+        setSessions(prev => prev.map(session => {
+          if (session.id !== threadId) return session;
+
+          const existing = activeMessagesRef.current.get(catId);
+          // 将工具调用追加到思考过程中
+          const toolCallText = `\n🔧 使用工具: ${toolName}\n${JSON.stringify(toolInput, null, 2)}`;
+          const newThoughtProcess = (existing?.thoughtProcess || '') + toolCallText;
+          activeMessagesRef.current.set(catId, {
+            content: existing?.content || '',
+            sessionId: threadId,
+            thoughtProcess: newThoughtProcess,
+          });
+
+          // 查找是否已有该 agent 的消息
+          const agentMsgIdx = session.messages.findIndex(
+            m => m.role === 'agent' && m.agentName === catId && !m.metrics
+          );
+
+          if (agentMsgIdx >= 0) {
+            // 更新现有消息的思考过程
+            const updated = [...session.messages];
+            updated[agentMsgIdx] = {
+              ...updated[agentMsgIdx],
+              thoughtProcess: newThoughtProcess,
+            };
+            return { ...session, messages: updated };
+          } else {
+            // 创建新消息
+            const newMsg: Message = {
+              id: `${Date.now()}-${catId}`,
+              role: 'agent',
+              agentName: catId,
+              content: '',
+              thoughtProcess: newThoughtProcess,
+              ts: Date.now()
+            };
+            return { ...session, messages: [...session.messages, newMsg] };
+          }
+        }));
+      },
+      onMetrics: (catId, metrics) => {
+        // 真实 metrics 数据：格式化并更新消息
+        console.log('[SSE] Metrics:', catId, metrics);
+
+        // 将后端 metrics 转换为前端需要的格式
+        const formattedMetrics = {
+          model: catId === 'opus' ? 'claude-opus-4' : catId === 'codex' ? 'gpt-4o' : 'gemini-2.0-flash',
+          ttfb: metrics.duration_ms ? `${(metrics.duration_ms / 1000).toFixed(1)}s` : '-',
+          tokens: `${metrics.input_tokens || 0} + ${metrics.output_tokens || 0}`,
+          cache: metrics.cache_read_input_tokens ? `Hit (${metrics.cache_read_input_tokens})` : 'Miss'
+        };
+
+        setSessions(prev => prev.map(session => {
+          if (session.id !== threadId) return session;
+
+          // 查找该 agent 的消息并设置 metrics
+          const agentMsgIdx = session.messages.findIndex(
+            m => m.role === 'agent' && m.agentName === catId
+          );
+
+          if (agentMsgIdx >= 0) {
+            const updated = [...session.messages];
+            updated[agentMsgIdx] = {
+              ...updated[agentMsgIdx],
+              metrics: formattedMetrics
+            };
+            return { ...session, messages: updated };
+          }
+          return session;
+        }));
+      },
+      onMessage: (catId, content) => {
+        // 显式消息：callback message 是权威来源
+        const existing = activeMessagesRef.current.get(catId);
+        activeMessagesRef.current.set(catId, { ...existing, content, sessionId: threadId });
+
+        setSessions(prev => prev.map(session => {
+          if (session.id !== threadId) return session;
+
+          // 查找并更新该 agent 的消息
+          const agentMsgIdx = session.messages.findIndex(
+            m => m.role === 'agent' && m.agentName === catId
+          );
+
+          if (agentMsgIdx >= 0) {
+            const updated = [...session.messages];
+            updated[agentMsgIdx] = {
+              ...updated[agentMsgIdx],
+              content,
+              // 保留已有的 thoughtProcess
+              thoughtProcess: existing?.thoughtProcess || updated[agentMsgIdx].thoughtProcess,
+              // 保留已有的 metrics（如果有）
+              metrics: updated[agentMsgIdx].metrics
+            };
+            return { ...session, messages: updated };
+          } else {
+            const newMsg: Message = {
+              id: `${Date.now()}-${catId}`,
+              role: 'agent',
+              agentName: catId,
+              content,
+              thoughtProcess: existing?.thoughtProcess || '',
+              ts: Date.now()
+            };
+            return { ...session, messages: [...session.messages, newMsg] };
+          }
+        }));
+      },
+      onSystem: (message) => {
+        console.log('[SSE] System:', message);
+
+        // 如果执行完成，清空活动消息
+        if (message.includes('执行完成')) {
+          setIsRunning(false);
+          activeMessagesRef.current.clear();
+        }
+
+        // 添加系统消息
+        setSessions(prev => prev.map(session => {
+          if (session.id !== threadId) return session;
+          const sysMsg: Message = {
+            id: `sys-${Date.now()}`,
+            role: 'system',
+            content: message,
+            ts: Date.now()
+          };
+          return { ...session, messages: [...session.messages, sysMsg] };
+        }));
+      },
+      onError: (error) => {
+        console.error('[SSE] Error:', error);
+        setIsRunning(false);
+      }
+    });
+  }, []);
+
+  // 创建新会话
+  const handleCreateSession = async () => {
+    try {
+      const session = await api.createSession();
+      setSessions(prev => [session, ...prev]);
+      setCurrentSessionId(session.id);
+      activeMessagesRef.current.clear();
+      connectStream(session.id);
+    } catch (err) {
+      console.error('Create session failed:', err);
     }
   };
 
-  const handleSend = (text: string) => {
-    if (!currentSessionId) return;
+  // 删除会话
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await api.deleteSession(sessionId);
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
 
-    const userMessage = {
+      if (currentSessionId === sessionId) {
+        const remaining = sessions.filter(s => s.id !== sessionId);
+        const newCurrentId = remaining[0]?.id || null;
+        setCurrentSessionId(newCurrentId);
+        if (newCurrentId) {
+          connectStream(newCurrentId);
+        } else {
+          eventSourceRef.current?.close();
+        }
+      }
+    } catch (err) {
+      console.error('Delete session failed:', err);
+    }
+  };
+
+  // 切换会话
+  const handleSwitchSession = async (sessionId: string) => {
+    try {
+      const session = await api.switchSession(sessionId);
+      setSessions(prev => prev.map(s => s.id === sessionId ? session : s));
+      setCurrentSessionId(sessionId);
+      activeMessagesRef.current.clear();
+      connectStream(sessionId);
+    } catch (err) {
+      console.error('Switch session failed:', err);
+    }
+  };
+
+  // 从 prompt 中提取 @ 提及的 agent
+  const extractMentionedCats = (prompt: string): string[] => {
+    const catIds = agents.map(a => a.id);
+    const mentioned: string[] = [];
+    const regex = /@(\w+)/gi;
+    let match;
+    while ((match = regex.exec(prompt)) !== null) {
+      const catId = match[1].toLowerCase();
+      if (catIds.includes(catId) && !mentioned.includes(catId)) {
+        mentioned.push(catId);
+      }
+    }
+    return mentioned;
+  };
+
+  // 发送消息
+  const handleSend = async (text: string) => {
+    if (!currentSessionId || isRunning) return;
+
+    // 清空上一轮的活动消息
+    activeMessagesRef.current.clear();
+
+    // 从 prompt 中提取 @ 提及的 agent，如果没有则使用所有 agent
+    const mentionedCats = extractMentionedCats(text);
+    const cats = mentionedCats.length > 0 ? mentionedCats : agents.map(a => a.id);
+
+    if (cats.length === 0) {
+      console.error('No agents available');
+      return;
+    }
+
+    // 添加用户消息
+    const userMsg: Message = {
       id: Date.now().toString(),
-      role: 'user' as const,
+      role: 'user',
       content: text,
+      ts: Date.now()
     };
 
     setSessions(prev => prev.map(session => {
-      if (session.id === currentSessionId) {
-        return {
-          ...session,
-          messages: [...session.messages, userMessage],
-          messageCount: session.messages.length + 1,
-        };
-      }
-      return session;
+      if (session.id !== currentSessionId) return session;
+      return { ...session, messages: [...session.messages, userMsg] };
     }));
 
-    setTimeout(() => {
-      const agentMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'agent' as const,
-        agentName: 'codex',
-        content: '收到你的请求，正在处理中...\n\n```javascript\nconsole.log("Hello Multi-Agent");\n```',
-        metrics: { model: 'gpt-4o', ttfb: '0.4s', tokens: '89', cache: 'Miss' }
-      };
+    // 保存用户消息到后端
+    try {
+      await api.addMessage(currentSessionId, 'user', text);
+    } catch (err) {
+      console.error('Add message failed:', err);
+    }
 
-      setSessions(prev => prev.map(session => {
-        if (session.id === currentSessionId) {
-          return {
-            ...session,
-            messages: [...session.messages, agentMessage],
-            messageCount: session.messages.length + 2,
-          };
-        }
-        return session;
-      }));
-    }, 1500);
+    // 确保连接到正确的 thread
+    connectStream(currentSessionId);
+
+    // 执行任务
+    setIsRunning(true);
+    try {
+      await api.runAgent({
+        threadId: currentSessionId,
+        cats,
+        prompt: text
+      });
+    } catch (err) {
+      console.error('Run agent failed:', err);
+      setIsRunning(false);
+    }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string | number) => {
+    let d: Date;
+    if (typeof date === 'number') {
+      d = new Date(date);
+    } else if (typeof date === 'string') {
+      d = new Date(date);
+    } else {
+      d = date;
+    }
+    // 检查日期是否有效
+    if (isNaN(d.getTime())) {
+      return '';
+    }
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = now.getTime() - d.getTime();
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return '刚刚';
     if (minutes < 60) return `${minutes} 分钟前`;
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours} 小时前`;
-    return date.toLocaleDateString();
+    return d.toLocaleDateString();
   };
 
   return (
@@ -197,7 +566,7 @@ function App() {
                   {sessions.map((session) => (
                     <div
                       key={session.id}
-                      onClick={() => setCurrentSessionId(session.id)}
+                      onClick={() => handleSwitchSession(session.id)}
                       className={`group p-3.5 rounded-2xl cursor-pointer transition-all duration-300 ${
                         currentSessionId === session.id
                           ? 'bg-gradient-to-r from-primary/15 to-secondary/10 shadow-medium border-l-[3px] border-primary'
@@ -212,11 +581,11 @@ function App() {
                                 ? 'bg-gradient-to-br from-primary to-secondary shadow-sm'
                                 : 'bg-slate-300'
                             }`} />
-                            <div className="text-sm font-semibold text-foreground truncate">{session.title}</div>
+                            <div className="text-sm font-semibold text-foreground truncate">{session.title || '新会话'}</div>
                           </div>
                           <div className="flex items-center gap-2 mt-2 ml-5">
                             <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground font-medium">{session.messageCount} 条消息</span>
+                            <span className="text-xs text-muted-foreground font-medium">{session.messageCount || session.messages?.length || 0} 条消息</span>
                             <span className="text-xs text-muted-foreground/40">·</span>
                             <span className="text-xs text-muted-foreground">{formatTime(session.createdAt)}</span>
                           </div>
@@ -265,13 +634,22 @@ function App() {
                         metrics={msg.metrics}
                       />
                     ))}
+                    {isRunning && (
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Agent 正在思考...</span>
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </div>
                 </div>
 
                 <div className="p-4 bg-white/80">
                   <div className="max-w-4xl mx-auto">
-                    <Composer onSend={handleSend} agents={MOCK_AGENTS} />
+                    <Composer
+                      onSend={handleSend}
+                      agents={agents}
+                    />
                   </div>
                 </div>
               </div>

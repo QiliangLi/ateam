@@ -115,6 +115,20 @@ async function handleRun(payload) {
       onOutput: (event) => {
         if (event.type === 'cli') {
           pushEvent(threadId, { type: 'cli', catId: event.catId, text: event.text });
+        } else if (event.type === 'thinking') {
+          // 思考过程
+          pushEvent(threadId, { type: 'thinking', catId: event.catId, thinking: event.thinking });
+        } else if (event.type === 'tool_call') {
+          // 工具调用
+          pushEvent(threadId, {
+            type: 'tool_call',
+            catId: event.catId,
+            toolName: event.toolName,
+            toolInput: event.toolInput
+          });
+        } else if (event.type === 'metrics') {
+          // 最终指标
+          pushEvent(threadId, { type: 'metrics', catId: event.catId, metrics: event.metrics });
         }
       },
       onStatus: (event) => {
